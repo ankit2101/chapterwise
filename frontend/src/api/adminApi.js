@@ -1,0 +1,68 @@
+const BASE = '/api/admin';
+
+async function handleResponse(res) {
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `Request failed: ${res.status}`);
+  }
+  return data;
+}
+
+export async function getContent() {
+  const res = await fetch(`${BASE}/content`, { credentials: 'include' });
+  return handleResponse(res);
+}
+
+export async function uploadChapter(formData) {
+  const res = await fetch(`${BASE}/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  return handleResponse(res);
+}
+
+export async function deleteChapter(id) {
+  const res = await fetch(`${BASE}/chapter/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  return handleResponse(res);
+}
+
+export async function regenerateQuestions(id) {
+  const res = await fetch(`${BASE}/regenerate-questions/${id}`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  return handleResponse(res);
+}
+
+export async function changePassword(currentPassword, newPassword, confirmPassword) {
+  const res = await fetch(`${BASE}/change-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    }),
+  });
+  return handleResponse(res);
+}
+
+export async function saveApiKey(apiKey) {
+  const res = await fetch(`${BASE}/save-api-key`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+  return handleResponse(res);
+}
+
+export async function getApiKeyStatus() {
+  const res = await fetch(`${BASE}/api-key-status`, { credentials: 'include' });
+  return handleResponse(res);
+}

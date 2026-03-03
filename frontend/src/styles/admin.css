@@ -1,0 +1,368 @@
+/* ──────────────────────────────────────────────
+   ChapterWise — Admin Panel Styles
+   ────────────────────────────────────────────── */
+
+/* ── Admin Login ── */
+.admin-login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.admin-login-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.admin-login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.admin-logo {
+  width: 56px;
+  height: 56px;
+  background: #4f46e5;
+  color: white;
+  font-weight: 900;
+  font-size: 1.125rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+.admin-login-header h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+.admin-login-header p {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+.admin-login-form .form-group { margin-bottom: 1.125rem; }
+.btn-full { width: 100%; margin-top: 0.5rem; }
+
+/* ── Admin Layout ── */
+.admin-layout {
+  min-height: 100vh;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+}
+.admin-header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  flex-wrap: wrap;
+}
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.admin-logo-text {
+  background: #4f46e5;
+  color: white;
+  font-weight: 900;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+.admin-header-left h1 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.admin-user {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+.admin-main {
+  flex: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  width: 100%;
+}
+
+/* ── Admin Button Variants ── */
+.btn-sm {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+}
+.btn-ghost {
+  background: none;
+  border-color: transparent;
+  color: #6b7280;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.btn-ghost:hover { background: #f3f4f6; color: #1f2937; }
+.btn-delete {
+  background: white;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.btn-delete:hover:not(:disabled) { background: #fee2e2; border-color: #dc2626; }
+.btn-danger {
+  background: #dc2626 !important;
+  color: white !important;
+  border-color: #dc2626 !important;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+/* ── Stats Bar ── */
+.admin-stats-bar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.stat-item {
+  background: white;
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  text-align: center;
+  min-width: 100px;
+}
+.stat-value {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #4f46e5;
+}
+.stat-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Upload Form Card ── */
+.upload-form-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.75rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
+}
+.upload-form-card h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1.25rem;
+}
+.upload-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.file-info {
+  display: block;
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 0.375rem;
+}
+.form-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.25rem;
+}
+.alert-warning-inline {
+  font-size: 0.8rem;
+  margin-top: 0.375rem;
+  color: #d97706;
+}
+
+/* ── Content Section ── */
+.content-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.75rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.section-header h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* ── Chapter Table ── */
+.board-section { margin-bottom: 2rem; }
+.board-heading {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #4f46e5;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 2px solid #e0e7ff;
+}
+.grade-section { margin-bottom: 1.25rem; margin-left: 0.75rem; }
+.grade-heading {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+.subject-section { margin-bottom: 0.75rem; margin-left: 0.5rem; }
+.subject-heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.375rem;
+}
+.chapter-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.chapter-table th {
+  background: #f9fafb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+.chapter-table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+.chapter-table tr:last-child td { border-bottom: none; }
+.chapter-table tr:hover td { background: #fafafa; }
+.chapter-name-cell { font-weight: 500; color: #1f2937; }
+.text-center { text-align: center; }
+.text-muted { color: #9ca3af; font-size: 0.8rem; }
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-ok { background: #dcfce7; color: #16a34a; }
+.badge-warning { background: #fef3c7; color: #d97706; }
+.badge-muted { background: #f3f4f6; color: #9ca3af; }
+
+/* ── Empty State ── */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+}
+
+/* ── Settings ── */
+.settings-main { max-width: 600px; }
+.settings-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+}
+.settings-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.75rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
+}
+.settings-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+.settings-description {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
+}
+.settings-description a {
+  color: #4f46e5;
+  text-decoration: none;
+}
+.settings-description a:hover { text-decoration: underline; }
+.settings-form .form-group { margin-bottom: 1.125rem; }
+
+.api-key-status {
+  padding: 0.625rem 0.875rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.status-ok { background: #dcfce7; color: #16a34a; }
+.status-missing { background: #fee2e2; color: #dc2626; }
+
+/* ── Responsive Admin ── */
+@media (max-width: 768px) {
+  .upload-form .form-row { grid-template-columns: 1fr; }
+  .chapter-table { font-size: 0.8rem; }
+  .admin-stats-bar { flex-wrap: wrap; }
+  .actions-cell { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+}
