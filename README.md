@@ -7,6 +7,8 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 ## Features
 
 ### Student Portal
+- **Student login** — Students log in with a name and 4-digit PIN assigned by their teacher (no self-registration)
+- **Session management** — 30-minute inactivity timeout with automatic session expiry; active sessions resume on re-login
 - **Cascading selection** — Board (CBSE / ICSE) → Grade → Subject → Chapter, all populated from uploaded PDFs
 - **CBSE-pattern question paper** — Three sections per chapter, scaled to chapter size:
   - **Section A** — 10–15 one-mark questions (definitions, single facts, one-liners)
@@ -21,6 +23,7 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 - **Test summary** — Total score, percentage, section-wise breakdown (Section A / B / C), missed topics, and a per-question breakdown at the end
 
 ### Admin Panel
+- **Student management** — Create student accounts with name + 4-digit PIN, reset PINs, and delete students from the dashboard
 - **PDF upload** — Attach a board, grade, subject, and chapter name to any PDF
 - **Content management** — View, organise, and delete uploaded chapters
 - **Question cache** — Questions are generated once and cached; a "Refresh Questions" button forces regeneration
@@ -45,7 +48,7 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 | Frontend | React 18, Vite, React Router v6 |
 | Voice Input | Browser Web Speech API (`en-IN`) |
 | Text-to-Speech | Browser `speechSynthesis` API |
-| Auth | bcrypt, Flask sessions |
+| Auth | bcrypt, Flask sessions, PIN-based student login |
 
 ---
 
@@ -147,10 +150,13 @@ A convenience script starts the server and opens the browser automatically:
    - **Username:** `admin`
    - **Password:** `admin123`
 3. Go to **Settings** → paste your Anthropic API key → click **Save API Key**
-4. Go to **Dashboard** → upload your first PDF:
+4. Go to **Dashboard** → **Student Management** section → create student accounts:
+   - Enter a student name and a 4-digit PIN
+   - Share the name and PIN with the student (students cannot self-register)
+5. Upload your first PDF:
    - Select Board, Grade, Subject, and enter a Chapter Name
    - Upload the PDF (up to 32 MB)
-5. The app extracts text automatically. Chapters with very little text (scanned/image PDFs) will show a warning.
+6. The app extracts text automatically. Chapters with very little text (scanned/image PDFs) will show a warning.
 
 > **Change the default password** immediately after first login via Settings → Change Password.
 
@@ -159,9 +165,12 @@ A convenience script starts the server and opens the browser automatically:
 ## How It Works
 
 ```
+Admin creates student accounts (name + 4-digit PIN)
 Admin uploads PDF
         ↓
 Text extracted by pdfplumber
+        ↓
+Student logs in with name + PIN
         ↓
 Student selects Board → Grade → Subject → Chapter → Start Test
         ↓
@@ -207,13 +216,13 @@ Every subtopic of the chapter appears in at least one question across all three 
 chapterwise/
 ├── app.py                  # Flask app factory, SPA catch-all route
 ├── config.py               # Configuration (model, DB path, upload folder)
-├── models.py               # SQLAlchemy models: Admin, Chapter, TestSession, AppSettings
+├── models.py               # SQLAlchemy models: Student, Admin, Chapter, TestSession, AppSettings
 ├── requirements.txt
 │
 ├── routes/
-│   ├── student.py          # /api/grades, /api/subjects, /api/chapters,
+│   ├── student.py          # /api/student/login, /api/grades, /api/subjects, /api/chapters,
 │   │                       # /api/start-test, /api/submit-answer, /api/session/<key>
-│   └── admin.py            # /api/admin/* (login, upload, delete, password, API key)
+│   └── admin.py            # /api/admin/* (login, upload, delete, password, API key, students)
 │
 ├── services/
 │   ├── pdf_service.py      # pdfplumber text extraction + cleaning
@@ -223,15 +232,16 @@ chapterwise/
 │   ├── vite.config.js      # Dev proxy (/api → :5000), build output → ../static/
 │   └── src/
 │       ├── App.jsx          # React Router route definitions
-│       ├── context/         # AdminAuthContext (login state)
+│       ├── context/         # AdminAuthContext, StudentAuthContext (login state)
 │       ├── api/             # studentApi.js, adminApi.js (fetch wrappers)
 │       ├── hooks/           # useSpeechRecognition.js, useTextToSpeech.js
 │       ├── components/
-│       │   ├── student/     # SelectionPage, TestPage, QuestionCard,
-│       │   │                # VoiceInput, FeedbackCard, SummaryPage
+│       │   ├── student/     # StudentLogin, SelectionPage, TestPage,
+│       │   │                # QuestionCard, VoiceInput, FeedbackCard, SummaryPage
 │       │   ├── admin/       # AdminLogin, AdminDashboard, UploadForm,
-│       │   │                # ChapterTable, AdminSettings
-│       │   └── shared/      # LoadingOverlay, Toast, ProtectedRoute, Logo
+│       │   │                # ChapterTable, AdminSettings, StudentManagement
+│       │   └── shared/      # LoadingOverlay, Toast, ProtectedRoute,
+│       │                    # StudentProtectedRoute, Logo
 │       └── styles/          # student.css, admin.css
 │
 ├── static/                 # Built React output + logo.png (logo.png not gitignored)
@@ -258,6 +268,8 @@ The Anthropic API key set through the Admin Panel takes precedence over the envi
 
 | Method | URL | Description |
 |---|---|---|
+| `POST` | `/api/student/login` | Authenticate student with name + PIN |
+| `POST` | `/api/student/session-ping` | Keep session alive (resets 30-min timer) |
 | `GET` | `/api/grades?board=CBSE` | Available grades for a board |
 | `GET` | `/api/subjects?board=CBSE&grade=8` | Subjects for board + grade |
 | `GET` | `/api/chapters?board=CBSE&grade=8&subject=Science` | Chapters for board + grade + subject |
@@ -269,7 +281,7 @@ The Anthropic API key set through the Admin Panel takes precedence over the envi
 
 | Method | URL | Description |
 |---|---|---|
-| `POST` | `/api/admin/login` | Authenticate |
+| `POST` | `/api/admin/login` | Authenticate admin |
 | `POST` | `/api/admin/logout` | Clear session |
 | `GET` | `/api/admin/content` | All chapters grouped by board/grade/subject |
 | `POST` | `/api/admin/upload` | Upload PDF + metadata |
@@ -277,6 +289,10 @@ The Anthropic API key set through the Admin Panel takes precedence over the envi
 | `POST` | `/api/admin/change-password` | Update admin password |
 | `POST` | `/api/admin/save-api-key` | Store Anthropic API key |
 | `GET` | `/api/admin/api-key-status` | Check if API key is configured |
+| `GET` | `/api/admin/students` | List all students with session counts |
+| `POST` | `/api/admin/students` | Create a new student (name + PIN) |
+| `DELETE` | `/api/admin/students/<id>` | Delete a student account |
+| `POST` | `/api/admin/students/<id>/reset-pin` | Reset a student's PIN |
 
 ---
 
