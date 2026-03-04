@@ -85,11 +85,20 @@ cd ..
 
 ### 4. Configure environment
 
+Create a `.env` file in the project root:
+
 ```bash
-cp .env.example .env
+# Required — change this to a long random string before deploying
+SECRET_KEY=chapterwise-secret-change-in-prod-2024
+
+# Optional — fallback Anthropic API key.
+# You can also set this through Admin Panel → Settings after startup.
+# ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-`.env` is only needed for an optional fallback API key and the secret key. The Anthropic API key can also be entered through the Admin Panel UI after startup.
+> The `SECRET_KEY` secures Flask session cookies. Any long random string works for local use. For production, generate one with `python3 -c "import secrets; print(secrets.token_hex(32))"`.
+
+> The `ANTHROPIC_API_KEY` set through the Admin Panel takes precedence over the `.env` value.
 
 ### 5. Add the logo image
 
@@ -251,14 +260,32 @@ chapterwise/
 
 ---
 
-## Environment Variables
+## Configuration
 
-| Variable | Required | Description |
+### Environment Variables (`.env`)
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `SECRET_KEY` | Recommended | `chapterwise-secret-change-in-prod-2024` | Flask session secret. Change to a random string before deploying. |
+| `ANTHROPIC_API_KEY` | Optional | *(none)* | Fallback Anthropic API key. Can be set via Admin Panel → Settings instead. |
+
+Generate a secure secret key:
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+### App Configuration (`config.py`)
+
+| Setting | Value | Description |
 |---|---|---|
-| `SECRET_KEY` | Recommended | Flask session secret. Change before deploying. |
-| `ANTHROPIC_API_KEY` | Optional | Fallback API key. Can be set via Admin Panel instead. |
+| `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Claude model used for question generation and evaluation |
+| `MAX_CONTENT_LENGTH` | `32 MB` | Maximum PDF upload size |
+| `SQLALCHEMY_DATABASE_URI` | `sqlite:///chapterwise.db` | SQLite database in the project root |
+| `UPLOAD_FOLDER` | `uploads/pdfs/` | Directory where uploaded PDFs are stored |
+| `DEFAULT_ADMIN_USERNAME` | `admin` | Initial admin username (change via Admin Panel) |
+| `DEFAULT_ADMIN_PASSWORD` | `admin123` | Initial admin password (change immediately after first login) |
 
-The Anthropic API key set through the Admin Panel takes precedence over the environment variable.
+These settings live in `config.py` and can be overridden via environment variables where applicable.
 
 ---
 
