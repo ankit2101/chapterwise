@@ -35,10 +35,39 @@ def create_app(config=DevelopmentConfig):
         db.create_all()
         _seed_admin(app)
 
+    # JSON error handlers for all /api/* routes
+    from flask import request as _req, jsonify as _jsonify
+
+    @app.errorhandler(404)
+    def not_found(e):
+        if _req.path.startswith('/api/'):
+            return _jsonify({'error': 'Endpoint not found'}), 404
+        static_dir = app.config['STATIC_FOLDER']
+        index_path = os.path.join(static_dir, 'index.html')
+        if os.path.exists(index_path):
+            return send_file(index_path)
+        return str(e), 404
+
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        if _req.path.startswith('/api/'):
+            return _jsonify({'error': 'Method not allowed'}), 405
+        return str(e), 405
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        if _req.path.startswith('/api/'):
+            return _jsonify({'error': f'Server error: {e}'}), 500
+        return str(e), 500
+
     # Serve React SPA for any non-API route (production mode)
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_react(path):
+        from flask import request as _req, jsonify as _jsonify
+        # Return JSON 404 for unknown /api/* paths (not caught by blueprints)
+        if path.startswith('api/'):
+            return _jsonify({'error': 'Endpoint not found'}), 404
         static_dir = app.config['STATIC_FOLDER']
         # If it's a real static file, serve it
         if path and os.path.exists(os.path.join(static_dir, path)):

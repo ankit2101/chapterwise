@@ -66,3 +66,36 @@ export async function getApiKeyStatus() {
   const res = await fetch(`${BASE}/api-key-status`, { credentials: 'include' });
   return handleResponse(res);
 }
+
+export async function getStudents() {
+  const res = await fetch(`${BASE}/students`, { credentials: 'include' });
+  return handleResponse(res);
+}
+
+export async function createStudent(name, pin) {
+  const res = await fetch(`${BASE}/students`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ name, pin }),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteStudent(id) {
+  const res = await fetch(`${BASE}/students/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  return handleResponse(res);
+}
+
+export async function resetStudentPin(id, pin) {
+  const res = await fetch(`${BASE}/students/${id}/reset-pin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ pin }),
+  });
+  return handleResponse(res);
+}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { submitAnswer, getSession } from '../../api/studentApi';
+import { submitAnswer, getSession, sessionPing } from '../../api/studentApi';
 import QuestionCard from './QuestionCard';
 import VoiceInput from './VoiceInput';
 import FeedbackCard from './FeedbackCard';
@@ -14,7 +14,12 @@ const VIEW = {
   FEEDBACK: 'feedback',
   SUMMARY: 'summary',
   ERROR: 'error',
+  EXPIRED: 'expired',
 };
+
+const INACTIVITY_WARN_MS = 25 * 60 * 1000;  // 25 minutes
+const INACTIVITY_EXPIRE_MS = 30 * 60 * 1000; // 30 minutes
+const PING_INTERVAL_MS = 5 * 60 * 1000;      // ping every 5 minutes
 
 export default function TestPage() {
   const { sessionKey } = useParams();
@@ -32,6 +37,50 @@ export default function TestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [studentName, setStudentName] = useState('');
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+
+  const inactivityWarnTimer = useRef(null);
+  const inactivityExpireTimer = useRef(null);
+  const pingTimer = useRef(null);
+
+  const handleSessionExpired = useCallback(() => {
+    setView(VIEW.EXPIRED);
+  }, []);
+
+  const resetInactivityTimers = useCallback(() => {
+    clearTimeout(inactivityWarnTimer.current);
+    clearTimeout(inactivityExpireTimer.current);
+    setShowInactivityWarning(false);
+    inactivityWarnTimer.current = setTimeout(() => {
+      setShowInactivityWarning(true);
+    }, INACTIVITY_WARN_MS);
+    inactivityExpireTimer.current = setTimeout(() => {
+      handleSessionExpired();
+    }, INACTIVITY_EXPIRE_MS);
+  }, [handleSessionExpired]);
+
+  // Start inactivity timers when test is active
+  useEffect(() => {
+    if (view === VIEW.QUESTION || view === VIEW.FEEDBACK) {
+      resetInactivityTimers();
+    }
+    return () => {
+      clearTimeout(inactivityWarnTimer.current);
+      clearTimeout(inactivityExpireTimer.current);
+    };
+  }, [view, resetInactivityTimers]);
+
+  // Periodic server ping
+  useEffect(() => {
+    if (!sessionKey) return;
+    pingTimer.current = setInterval(async () => {
+      try {
+        const res = await sessionPing(sessionKey);
+        if (res.status === 'expired') handleSessionExpired();
+      } catch { /* ignore */ }
+    }, PING_INTERVAL_MS);
+    return () => clearInterval(pingTimer.current);
+  }, [sessionKey, handleSessionExpired]);
 
   useEffect(() => {
     const locState = location.state;
@@ -80,6 +129,7 @@ export default function TestPage() {
   }, [sessionKey]);
 
   const handleSubmit = async () => {
+    resetInactivityTimers();
     if (!answer.trim()) {
       setError('Please speak or type your answer before submitting.');
       return;
@@ -93,6 +143,7 @@ export default function TestPage() {
 
     try {
       const data = await submitAnswer(sessionKey, answer.trim(), studentName);
+      if (data.expired) { handleSessionExpired(); return; }
       setEvaluation(data.evaluation);
       setIsLastQuestion(!data.has_next);
 
@@ -133,6 +184,25 @@ export default function TestPage() {
     );
   }
 
+  if (view === VIEW.EXPIRED) {
+    return (
+      <div className="test-page error-page">
+        <header className="site-header"><div className="header-inner"><Logo size="md" /></div></header>
+        <main className="test-main">
+          <div className="session-expired-card">
+            <div className="expired-icon">⏰</div>
+            <h2>Session Expired</h2>
+            <p>Your test session expired after 30 minutes of inactivity. Your progress has been saved.</p>
+            <p>Log in again to resume or start a new test.</p>
+            <button className="btn btn-primary" onClick={() => navigate('/')}>
+              Back to Home
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (view === VIEW.ERROR) {
     return (
       <div className="test-page error-page">
@@ -158,8 +228,15 @@ export default function TestPage() {
   }
 
   return (
-    <div className="test-page">
+    <div className="test-page" onMouseMove={resetInactivityTimers} onKeyDown={resetInactivityTimers}>
       {submitting && <LoadingOverlay message="Evaluating your answer..." />}
+
+      {showInactivityWarning && (
+        <div className="inactivity-warning">
+          Your session will expire in 5 minutes due to inactivity.
+          <button className="btn-dismiss" onClick={resetInactivityTimers}>Keep going</button>
+        </div>
+      )}
 
       <header className="site-header">
         <div className="header-inner">

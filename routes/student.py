@@ -1,9 +1,101 @@
 from flask import Blueprint, request, jsonify
-from models import db, Chapter, TestSession
+from models import db, Chapter, TestSession, Student
 from services import claude_service
 import json
+import bcrypt
+from datetime import datetime, timedelta
 
 student_bp = Blueprint('student', __name__)
+
+SESSION_TIMEOUT_MINUTES = 30
+
+
+def _expire_old_sessions(student_id):
+    """Mark sessions older than SESSION_TIMEOUT_MINUTES as expired."""
+    cutoff = datetime.utcnow() - timedelta(minutes=SESSION_TIMEOUT_MINUTES)
+    TestSession.query.filter_by(student_id=student_id, status='active').filter(
+        TestSession.last_activity < cutoff
+    ).update({'status': 'expired'})
+    db.session.commit()
+
+
+@student_bp.route('/api/student/login', methods=['POST'])
+def student_login():
+    """Register (first time) or login (returning) by name + 4-digit PIN."""
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    pin = str(data.get('pin', '')).strip()
+
+    if not name or not pin:
+        return jsonify({'error': 'Name and PIN are required'}), 400
+    if len(pin) != 4 or not pin.isdigit():
+        return jsonify({'error': 'PIN must be exactly 4 digits'}), 400
+
+    name_lower = name.lower()
+    student = Student.query.filter_by(name_lower=name_lower).first()
+
+    if not student:
+        return jsonify({'error': 'Name not found. Ask your teacher to create your account.'}), 404
+
+    # Verify PIN
+    if not bcrypt.checkpw(pin.encode('utf-8'), student.pin_hash.encode('utf-8')):
+        return jsonify({'error': 'Incorrect PIN. Try again.'}), 401
+
+    # Expire stale sessions
+    _expire_old_sessions(student.id)
+
+    # Check for an active in-progress session
+    active_session = (
+        TestSession.query
+        .filter_by(student_id=student.id, status='active')
+        .order_by(TestSession.last_activity.desc())
+        .first()
+    )
+
+    response = {
+        'student_id': student.id,
+        'name': student.name,
+    }
+
+    if active_session:
+        chapter = active_session.chapter
+        questions = json.loads(active_session.questions_json) if active_session.questions_json else []
+        idx = active_session.current_question_index
+        response['active_session'] = {
+            'session_key': active_session.session_key,
+            'chapter_name': chapter.chapter_name,
+            'subject': chapter.subject,
+            'grade': chapter.grade,
+            'board': chapter.board,
+            'current_question_index': idx,
+            'total_questions': len(questions),
+            'last_activity': active_session.last_activity.isoformat(),
+        }
+
+    return jsonify(response)
+
+
+@student_bp.route('/api/student/session-ping', methods=['POST'])
+def session_ping():
+    """Heartbeat to keep session alive; also checks for timeout."""
+    data = request.get_json() or {}
+    session_key = data.get('session_key', '').strip()
+    if not session_key:
+        return jsonify({'error': 'session_key required'}), 400
+
+    session = TestSession.query.filter_by(session_key=session_key).first()
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+
+    cutoff = datetime.utcnow() - timedelta(minutes=SESSION_TIMEOUT_MINUTES)
+    if session.last_activity < cutoff and session.status == 'active':
+        session.status = 'expired'
+        db.session.commit()
+        return jsonify({'status': 'expired'})
+
+    session.last_activity = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'status': 'active'})
 
 
 @student_bp.route('/api/grades')
@@ -99,19 +191,18 @@ def start_test():
         except Exception as e:
             return jsonify({'error': f'Could not generate questions: {str(e)}'}), 500
 
+    student_id = data.get('student_id')
+
     session = TestSession(
         chapter_id=chapter_id,
+        student_id=student_id,
         questions_json=json.dumps(questions),
         current_question_index=0,
         answers_json=json.dumps([]),
-        status='active'
+        status='active',
+        last_activity=datetime.utcnow()
     )
-    # Store student name in a simple way via answers_json metadata
     db.session.add(session)
-    db.session.flush()  # Get ID without full commit
-
-    # Store student name in the session object
-    # We'll put it in a special first entry of answers that acts as metadata
     db.session.commit()
 
     first_q = questions[0]
@@ -146,8 +237,18 @@ def submit_answer():
     if not session:
         return jsonify({'error': 'Test session not found or expired'}), 404
 
+    if session.status == 'expired':
+        return jsonify({'error': 'Session expired due to inactivity. Please start a new test.', 'expired': True}), 410
+
     if session.status == 'completed':
         return jsonify({'error': 'This test is already completed'}), 400
+
+    # Check server-side timeout
+    cutoff = datetime.utcnow() - timedelta(minutes=SESSION_TIMEOUT_MINUTES)
+    if session.last_activity and session.last_activity < cutoff:
+        session.status = 'expired'
+        db.session.commit()
+        return jsonify({'error': 'Session expired due to inactivity. Please start a new test.', 'expired': True}), 410
 
     if not answer_text:
         return jsonify({'error': 'Answer cannot be empty'}), 400
@@ -191,6 +292,7 @@ def submit_answer():
 
     session.answers_json = json.dumps(answers)
     session.current_question_index = idx + 1
+    session.last_activity = datetime.utcnow()
 
     is_last = (idx + 1 >= len(questions))
     response_data = {'evaluation': evaluation}

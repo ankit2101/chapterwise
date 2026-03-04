@@ -5,6 +5,7 @@ import { getContent } from '../../api/adminApi';
 import UploadForm from './UploadForm';
 import Logo from '../shared/Logo';
 import ChapterTable from './ChapterTable';
+import StudentManagement from './StudentManagement';
 import LoadingOverlay from '../shared/LoadingOverlay';
 
 export default function AdminDashboard() {
@@ -84,6 +85,10 @@ export default function AdminDashboard() {
           {loading
             ? <LoadingOverlay message="Loading content..." />
             : <ChapterTable content={content} onRefresh={loadContent} />}
+        </div>
+
+        <div className="content-section">
+          <StudentManagement />
         </div>
       </main>
     </div>

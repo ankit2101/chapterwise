@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getGrades, getSubjects, getChapters, startTest } from '../../api/studentApi';
+import { useStudentAuth } from '../../context/StudentAuthContext';
 import LoadingOverlay from '../shared/LoadingOverlay';
 import Logo from '../shared/Logo';
 
 const BOARDS = ['CBSE', 'ICSE'];
 
 export default function SelectionPage() {
+  const { student, logout } = useStudentAuth();
   const [board, setBoard] = useState('');
   const [grade, setGrade] = useState('');
   const [subject, setSubject] = useState('');
   const [chapterId, setChapterId] = useState('');
-  const [studentName, setStudentName] = useState('');
 
   const [grades, setGrades] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -67,7 +68,9 @@ export default function SelectionPage() {
     setError('');
     setStartingTest(true);
     try {
-      const data = await startTest(parseInt(chapterId), studentName);
+      const studentName = student?.name || '';
+      const studentId = student?.id || null;
+      const data = await startTest(parseInt(chapterId), studentName, studentId);
       navigate(`/test/${data.session_key}`, {
         state: {
           sessionData: data,
@@ -89,29 +92,25 @@ export default function SelectionPage() {
       <header className="site-header">
         <div className="header-inner">
           <Logo size="md" />
-          <p className="tagline">Master Your Chapters. Revise Smarter.</p>
+          <div className="header-right">
+            {student && (
+              <div className="student-info">
+                <span className="student-greeting">Hi, <strong>{student.name}</strong></span>
+                <button className="btn btn-sm btn-ghost" onClick={logout}>Logout</button>
+              </div>
+            )}
+            <p className="tagline">Master Your Chapters. Revise Smarter.</p>
+          </div>
         </div>
       </header>
 
       <main className="selection-main">
         <div className="welcome-section">
-          <h1>Hello! Let&apos;s start practising</h1>
+          <h1>Hello{student ? `, ${student.name}` : ''}! Let&apos;s start practising</h1>
           <p>Select your board, grade, subject, and chapter to begin a test.</p>
         </div>
 
         <div className="selection-card">
-          <div className="form-group">
-            <label htmlFor="student-name">Your Name (optional)</label>
-            <input
-              id="student-name"
-              type="text"
-              value={studentName}
-              onChange={e => setStudentName(e.target.value)}
-              placeholder="Enter your name for personalised feedback"
-              maxLength={50}
-            />
-          </div>
-
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="board-select">Board</label>

@@ -25,11 +25,11 @@ export async function getChapters(board, grade, subject) {
   return handleResponse(res);
 }
 
-export async function startTest(chapterId, studentName = '') {
+export async function startTest(chapterId, studentName = '', studentId = null) {
   const res = await fetch(`${BASE}/start-test`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chapter_id: chapterId, student_name: studentName }),
+    body: JSON.stringify({ chapter_id: chapterId, student_name: studentName, student_id: studentId }),
   });
   return handleResponse(res);
 }
@@ -49,5 +49,23 @@ export async function submitAnswer(sessionKey, answerText, studentName = '') {
 
 export async function getSession(sessionKey) {
   const res = await fetch(`${BASE}/session/${sessionKey}`);
+  return handleResponse(res);
+}
+
+export async function studentLogin(name, pin) {
+  const res = await fetch(`${BASE}/student/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, pin }),
+  });
+  return handleResponse(res);
+}
+
+export async function sessionPing(sessionKey) {
+  const res = await fetch(`${BASE}/student/session-ping`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_key: sessionKey }),
+  });
   return handleResponse(res);
 }

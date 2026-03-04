@@ -824,6 +824,114 @@ body {
 .toast-warning { background: var(--warning); color: white; }
 .toast-info { background: var(--primary); color: white; }
 
+/* ── Student Login Page ── */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1569b8 0%, #2ec87e 100%);
+  padding: 1rem;
+}
+.login-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 420px;
+}
+.login-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+.login-subtitle {
+  text-align: center;
+  color: var(--gray-600);
+  font-size: 0.9rem;
+  margin-bottom: 1.75rem;
+}
+.login-form .form-group { margin-bottom: 1.25rem; }
+.btn-full { width: 100%; justify-content: center; }
+
+/* Resume prompt */
+.resume-prompt {
+  text-align: center;
+  padding: 0.5rem 0;
+}
+.resume-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+.resume-prompt h3 { font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--gray-800); }
+.resume-prompt > p { color: var(--gray-600); margin-bottom: 1rem; }
+.resume-details {
+  background: var(--primary-light);
+  border-radius: 8px;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.resume-details strong { color: var(--primary-dark); font-size: 1rem; }
+.resume-details span { color: var(--gray-600); font-size: 0.875rem; }
+.resume-progress { color: var(--primary) !important; font-weight: 600; }
+.resume-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+
+/* Student header info */
+.header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
+.student-info { display: flex; align-items: center; gap: 0.5rem; }
+.student-greeting { font-size: 0.875rem; color: var(--gray-600); }
+
+/* Inactivity warning banner */
+.inactivity-warning {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: var(--warning);
+  color: white;
+  text-align: center;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+.btn-dismiss {
+  background: white;
+  color: var(--warning);
+  border: none;
+  border-radius: 6px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Session expired card */
+.session-expired-card {
+  text-align: center;
+  background: white;
+  border-radius: var(--radius);
+  padding: 2.5rem 2rem;
+  max-width: 480px;
+  margin: 3rem auto;
+  box-shadow: var(--shadow-md);
+}
+.expired-icon { font-size: 3rem; margin-bottom: 1rem; }
+.session-expired-card h2 { margin-bottom: 0.75rem; color: var(--gray-800); }
+.session-expired-card p { color: var(--gray-600); margin-bottom: 0.5rem; }
+.session-expired-card .btn { margin-top: 1.5rem; }
+
 /* ── Responsive ── */
 @media (max-width: 640px) {
   /* Header */

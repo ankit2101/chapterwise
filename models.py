@@ -5,6 +5,21 @@ import uuid
 db = SQLAlchemy()
 
 
+class Student(db.Model):
+    __tablename__ = 'students'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    name_lower = db.Column(db.String(100), unique=True, nullable=False)  # lowercase for lookup
+    pin_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    test_sessions = db.relationship('TestSession', backref='student', lazy=True)
+
+    def __repr__(self):
+        return f'<Student {self.name}>'
+
+
 class Admin(db.Model):
     __tablename__ = 'admins'
 
@@ -61,11 +76,13 @@ class TestSession(db.Model):
     session_key = db.Column(db.String(36), unique=True, nullable=False,
                             default=lambda: str(uuid.uuid4()))
     chapter_id = db.Column(db.Integer, db.ForeignKey('chapters.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)
     questions_json = db.Column(db.Text, nullable=True)
     current_question_index = db.Column(db.Integer, default=0)
     answers_json = db.Column(db.Text, default='[]')
-    status = db.Column(db.String(20), default='active')
+    status = db.Column(db.String(20), default='active')  # active | completed | expired
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f'<TestSession {self.session_key} status={self.status}>'

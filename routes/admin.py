@@ -1,7 +1,7 @@
 import os
 import re
 from flask import Blueprint, request, jsonify, session, current_app
-from models import db, Admin, Chapter, AppSettings
+from models import db, Admin, Chapter, AppSettings, Student, TestSession
 from services.pdf_service import extract_text, is_content_sufficient
 import bcrypt
 
@@ -278,3 +278,80 @@ def api_key_status():
         'configured': configured or fallback,
         'source': 'admin_panel' if configured else ('env_variable' if fallback else 'none')
     })
+
+
+# ─── Student Management ───
+
+@admin_bp.route('/api/admin/students')
+@login_required
+def list_students():
+    students = Student.query.order_by(Student.name).all()
+    result = []
+    for s in students:
+        active = TestSession.query.filter_by(student_id=s.id, status='active').count()
+        completed = TestSession.query.filter_by(student_id=s.id, status='completed').count()
+        result.append({
+            'id': s.id,
+            'name': s.name,
+            'created_at': s.created_at.strftime('%d %b %Y'),
+            'active_sessions': active,
+            'completed_sessions': completed,
+        })
+    return jsonify({'students': result})
+
+
+@admin_bp.route('/api/admin/students', methods=['POST'])
+@login_required
+def create_student():
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    pin = str(data.get('pin', '')).strip()
+
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+    if not pin or len(pin) != 4 or not pin.isdigit():
+        return jsonify({'error': 'PIN must be exactly 4 digits'}), 400
+
+    name_lower = name.lower()
+    if Student.query.filter_by(name_lower=name_lower).first():
+        return jsonify({'error': f'A student named "{name}" already exists'}), 409
+
+    try:
+        pin_hash = bcrypt.hashpw(pin.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        student = Student(name=name, name_lower=name_lower, pin_hash=pin_hash)
+        db.session.add(student)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Could not create student: {str(e)}'}), 500
+
+    return jsonify({'success': True, 'student_id': student.id, 'name': student.name}), 201
+
+
+@admin_bp.route('/api/admin/students/<int:student_id>', methods=['DELETE'])
+@login_required
+def delete_student(student_id):
+    student = db.session.get(Student, student_id)
+    if not student:
+        return jsonify({'error': 'Student not found'}), 404
+    db.session.delete(student)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/api/admin/students/<int:student_id>/reset-pin', methods=['POST'])
+@login_required
+def reset_student_pin(student_id):
+    data = request.get_json() or {}
+    new_pin = str(data.get('pin', '')).strip()
+
+    if not new_pin or len(new_pin) != 4 or not new_pin.isdigit():
+        return jsonify({'error': 'New PIN must be exactly 4 digits'}), 400
+
+    student = db.session.get(Student, student_id)
+    if not student:
+        return jsonify({'error': 'Student not found'}), 404
+
+    student.pin_hash = bcrypt.hashpw(new_pin.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'PIN reset for {student.name}'})
