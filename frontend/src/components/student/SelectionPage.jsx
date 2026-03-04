@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getGrades, getSubjects, getChapters, startTest } from '../../api/studentApi';
 import LoadingOverlay from '../shared/LoadingOverlay';
+import Logo from '../shared/Logo';
 
 const BOARDS = ['CBSE', 'ICSE'];
 
@@ -87,11 +88,8 @@ export default function SelectionPage() {
 
       <header className="site-header">
         <div className="header-inner">
-          <div className="logo">
-            <span className="logo-icon">CW</span>
-            <span className="logo-text">ChapterWise</span>
-          </div>
-          <p className="tagline">Practice Makes Perfect</p>
+          <Logo size="md" />
+          <p className="tagline">Master Your Chapters. Revise Smarter.</p>
         </div>
       </header>
 

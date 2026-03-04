@@ -126,7 +126,8 @@ def start_test():
         'current_question': {
             'question_number': first_q['question_number'],
             'question_text': first_q['question_text'],
-            'topic_tag': first_q.get('topic_tag', '')
+            'topic_tag': first_q.get('topic_tag', ''),
+            'marks': first_q.get('marks', 1)
         }
     })
 
@@ -179,6 +180,7 @@ def submit_answer():
         'question_number': current_q['question_number'],
         'question_text': current_q['question_text'],
         'topic_tag': current_q.get('topic_tag', ''),
+        'marks': current_q.get('marks', 1),
         'student_answer': answer_text,
         'covered_points': evaluation.get('covered_points', []),
         'missed_points': evaluation.get('missed_points', []),
@@ -203,7 +205,8 @@ def submit_answer():
         response_data['next_question'] = {
             'question_number': next_q['question_number'],
             'question_text': next_q['question_text'],
-            'topic_tag': next_q.get('topic_tag', '')
+            'topic_tag': next_q.get('topic_tag', ''),
+            'marks': next_q.get('marks', 1)
         }
 
     db.session.commit()
@@ -241,7 +244,8 @@ def get_session(session_key):
         result['current_question'] = {
             'question_number': current_q['question_number'],
             'question_text': current_q['question_text'],
-            'topic_tag': current_q.get('topic_tag', '')
+            'topic_tag': current_q.get('topic_tag', ''),
+            'marks': current_q.get('marks', 1)
         }
 
     return jsonify(result)
@@ -256,6 +260,17 @@ def _build_summary(answers: list, questions: list) -> dict:
         if a.get('missed_points') and a.get('topic_tag')
     })
 
+    # Build section breakdown by marks type
+    sections_map = {}
+    for a in answers:
+        marks = a.get('marks', 1)
+        if marks not in sections_map:
+            sections_map[marks] = {'marks': marks, 'earned': 0, 'possible': 0, 'count': 0}
+        sections_map[marks]['earned'] += a.get('score', 0)
+        sections_map[marks]['possible'] += a.get('max_score', 0)
+        sections_map[marks]['count'] += 1
+    sections = sorted(sections_map.values(), key=lambda x: x['marks'])
+
     return {
         'total_questions': len(questions),
         'answered_questions': len(answers),
@@ -263,5 +278,6 @@ def _build_summary(answers: list, questions: list) -> dict:
         'max_score': max_score,
         'percentage': percentage,
         'questions_detail': answers,
-        'missed_topics': missed_topics
+        'missed_topics': missed_topics,
+        'sections': sections
     }

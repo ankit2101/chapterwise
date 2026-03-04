@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import Logo from '../shared/Logo';
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -31,8 +32,7 @@ export default function AdminLogin() {
     <div className="admin-login-page">
       <div className="admin-login-card">
         <div className="admin-login-header">
-          <div className="admin-logo">CW</div>
-          <h1>ChapterWise</h1>
+          <Logo size="lg" className="admin-logo" />
           <p>Admin Panel</p>
         </div>
 

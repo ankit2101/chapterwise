@@ -30,7 +30,7 @@ def _get_client():
 # Question Generation
 # ─────────────────────────────────────────────────────────────
 
-QUESTION_GENERATION_PROMPT = """You are an expert educational assessment designer for Indian school students.
+QUESTION_GENERATION_PROMPT = """You are an expert educational assessment designer for Indian school students following the CBSE curriculum.
 
 CONTEXT:
 - Board: {board}
@@ -42,16 +42,38 @@ CHAPTER CONTENT:
 {chapter_text}
 
 TASK:
-Analyze the chapter content above and generate a comprehensive set of questions that together cover ALL major topics and subtopics in the chapter.
+Analyze the chapter content and generate questions across THREE mark categories following the CBSE examination pattern. Questions must collectively cover ALL sections and subtopics in the chapter.
 
-REQUIREMENTS:
-1. Every significant concept, fact, process, or principle mentioned in the chapter must be covered by at least one question.
-2. Questions must be appropriate for Grade {grade} students in India ({board} board).
-3. Questions should be open-ended (short answer / explanation type) — NOT multiple choice.
-4. Each question must have 3–6 key points that constitute a complete correct answer.
-5. Generate 6–12 questions depending on chapter complexity. More topics = more questions.
-6. Questions should be in clear, simple English suitable for Grade {grade}.
-7. Include a topic_tag for each question indicating the subtopic it covers.
+STEP 1 — COUNT SUBTOPICS:
+Count the distinct sections/subtopics in the chapter, then choose question counts:
+- Simple chapter (1–4 subtopics):  10 one-mark,  5 three-mark,  5 five-mark
+- Medium chapter (5–7 subtopics):  12 one-mark,  7 three-mark,  7 five-mark
+- Large chapter  (8+ subtopics):   15 one-mark, 10 three-mark, 10 five-mark
+
+STEP 2 — GENERATE THREE SECTIONS:
+
+SECTION A — 1 MARK QUESTIONS (10–15 questions):
+- Very short answer: definitions, single facts, name/identify, one-word/one-line answers
+- Each question must have EXACTLY 1 key point
+- Distribute across ALL subtopics of the chapter
+
+SECTION B — 3 MARK QUESTIONS (5–10 questions):
+- Short answer: brief explanations, 3 characteristics/steps/features, simple comparisons
+- Each question must have EXACTLY 3 key points (each worth 1 mark)
+- Cover major concepts, processes, and important themes
+
+SECTION C — 5 MARK QUESTIONS (5–10 questions):
+- Long answer: detailed explanations, full processes, cause-and-effect, diagrams described in words
+- Each question must have EXACTLY 5 key points (each worth 1 mark)
+- Cover the most important and complex concepts in the chapter
+
+RULES:
+1. Question numbers are sequential starting from 1 — do NOT restart numbering per section.
+2. Order: all 1-mark questions first, then 3-mark, then 5-mark.
+3. Language must be simple and clear, appropriate for Grade {grade}.
+4. Every significant concept or section of the chapter must appear in at least one question.
+5. Include a topic_tag for each question indicating the subtopic it covers.
+6. key_points count MUST exactly match the marks value (1 mark = 1 key point, 3 marks = 3 key points, 5 marks = 5 key points).
 
 IMPORTANT: Return ONLY a valid JSON array. No explanation, no markdown code fences. Just the raw JSON array.
 
@@ -59,11 +81,34 @@ JSON FORMAT:
 [
   {{
     "question_number": 1,
+    "marks": 1,
     "question_text": "Question text here?",
     "key_points": [
-      "Key point 1",
-      "Key point 2",
-      "Key point 3"
+      "The single correct answer or key fact"
+    ],
+    "topic_tag": "Subtopic Name"
+  }},
+  {{
+    "question_number": 12,
+    "marks": 3,
+    "question_text": "Question text here?",
+    "key_points": [
+      "First key point (1 mark)",
+      "Second key point (1 mark)",
+      "Third key point (1 mark)"
+    ],
+    "topic_tag": "Subtopic Name"
+  }},
+  {{
+    "question_number": 19,
+    "marks": 5,
+    "question_text": "Question text here?",
+    "key_points": [
+      "First key point (1 mark)",
+      "Second key point (1 mark)",
+      "Third key point (1 mark)",
+      "Fourth key point (1 mark)",
+      "Fifth key point (1 mark)"
     ],
     "topic_tag": "Subtopic Name"
   }}
@@ -89,7 +134,7 @@ def generate_questions(chapter_text: str, chapter_name: str,
 
     message = client.messages.create(
         model=current_app.config['CLAUDE_MODEL'],
-        max_tokens=4096,
+        max_tokens=8192,
         messages=[{"role": "user", "content": prompt}]
     )
 

@@ -6,6 +6,7 @@ import VoiceInput from './VoiceInput';
 import FeedbackCard from './FeedbackCard';
 import SummaryPage from './SummaryPage';
 import LoadingOverlay from '../shared/LoadingOverlay';
+import Logo from '../shared/Logo';
 
 const VIEW = {
   LOADING: 'loading',
@@ -137,10 +138,7 @@ export default function TestPage() {
       <div className="test-page error-page">
         <header className="site-header">
           <div className="header-inner">
-            <div className="logo">
-              <span className="logo-icon">CW</span>
-              <span className="logo-text">ChapterWise</span>
-            </div>
+            <Logo size="md" />
           </div>
         </header>
         <main className="test-main">
@@ -165,10 +163,7 @@ export default function TestPage() {
 
       <header className="site-header">
         <div className="header-inner">
-          <div className="logo">
-            <span className="logo-icon">CW</span>
-            <span className="logo-text">ChapterWise</span>
-          </div>
+          <Logo size="md" />
           {sessionInfo && (
             <div className="test-context">
               {sessionInfo.board} · Grade {sessionInfo.grade} · {sessionInfo.subject}

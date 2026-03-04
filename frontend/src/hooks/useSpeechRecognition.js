@@ -1,9 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
-const SpeechRecognition =
-  window.SpeechRecognition || window.webkitSpeechRecognition || null;
-
 export default function useSpeechRecognition() {
+  // Detect support inside the hook (not at module-load time) to avoid
+  // silent null when the module is evaluated before the browser is ready.
+  const SpeechRecognition =
+    (typeof window !== 'undefined' &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition)) ||
+    null;
+
   const [transcript, setTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState(null);
@@ -26,6 +30,16 @@ export default function useSpeechRecognition() {
       setError('Speech recognition is not supported in this browser. Please use Google Chrome.');
       return;
     }
+
+    // Prevent double-start if already listening or in 300 ms startup window
+    if (shouldRestartRef.current) return;
+
+    // Stop any TTS that may be playing — Chrome won't start the mic reliably
+    // while speechSynthesis is active, and the mic would pick up the speaker.
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
     setError(null);
     finalTranscriptRef.current = existingText;
 
@@ -57,10 +71,16 @@ export default function useSpeechRecognition() {
     };
 
     recognition.onerror = (event) => {
+      // 'no-speech' fires after ~5-8 s of silence even with continuous=true.
+      // Don't treat it as a fatal error — let onend fire and auto-restart.
+      if (event.error === 'no-speech') {
+        return;
+      }
+
       const messages = {
-        'no-speech': 'No speech detected. Please try again.',
         'audio-capture': 'Microphone not accessible. Check browser permissions.',
-        'not-allowed': 'Microphone permission was denied. Please allow microphone access in your browser settings.',
+        'not-allowed':
+          'Microphone permission was denied. Please allow microphone access in your browser settings.',
         'network': 'A network error occurred during speech recognition.',
       };
       setError(messages[event.error] || `Speech error: ${event.error}`);
@@ -69,7 +89,8 @@ export default function useSpeechRecognition() {
     };
 
     recognition.onend = () => {
-      // Auto-restart if we should still be listening
+      // Auto-restart if we should still be listening (handles both unexpected
+      // stops and the silent no-speech case handled above).
       if (shouldRestartRef.current) {
         setTimeout(() => {
           if (shouldRestartRef.current && recognitionRef.current) {
@@ -77,6 +98,7 @@ export default function useSpeechRecognition() {
               recognitionRef.current.start();
             } catch {
               setIsListening(false);
+              shouldRestartRef.current = false;
             }
           }
         }, 150);
@@ -87,8 +109,24 @@ export default function useSpeechRecognition() {
 
     recognitionRef.current = recognition;
     shouldRestartRef.current = true;
-    recognition.start();
-  }, [isSupported]);
+
+    // Show listening state immediately so the button reflects "active" during
+    // the 300 ms wait (also prevents accidental double-clicks).
+    setIsListening(true);
+
+    // Wait 300 ms after cancelling TTS before starting the mic so the
+    // audio subsystem has time to fully release the output stream.
+    setTimeout(() => {
+      if (shouldRestartRef.current && recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+        } catch {
+          setIsListening(false);
+          shouldRestartRef.current = false;
+        }
+      }
+    }, 300);
+  }, [isSupported, SpeechRecognition]);
 
   const resetTranscript = useCallback(() => {
     finalTranscriptRef.current = '';

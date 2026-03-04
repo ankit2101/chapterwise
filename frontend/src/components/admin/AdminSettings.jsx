@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { changePassword, saveApiKey, getApiKeyStatus } from '../../api/adminApi';
+import Logo from '../shared/Logo';
 
 export default function AdminSettings() {
   const navigate = useNavigate();
@@ -77,8 +78,8 @@ export default function AdminSettings() {
     <div className="admin-layout">
       <header className="admin-header">
         <div className="admin-header-left">
-          <span className="admin-logo-text">CW</span>
-          <h1>ChapterWise Admin</h1>
+          <Logo size="sm" className="admin-logo-img" />
+          <h1>Admin Panel</h1>
         </div>
         <div className="admin-header-right">
           <span className="admin-user">Logged in as <strong>{username}</strong></span>

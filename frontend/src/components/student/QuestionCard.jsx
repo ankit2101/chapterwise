@@ -24,6 +24,12 @@ export default function QuestionCard({ question, currentNumber, totalQuestions }
 
   const progress = ((currentNumber - 1) / totalQuestions) * 100;
 
+  const marksHint = question.marks === 1
+    ? 'One-line answer expected'
+    : question.marks === 3
+    ? 'Cover 3 key points in your answer'
+    : 'Give a detailed answer covering 5 key points';
+
   return (
     <div className="question-card">
       <div className="progress-bar-container">
@@ -34,14 +40,25 @@ export default function QuestionCard({ question, currentNumber, totalQuestions }
         <span className="question-counter">
           Question {currentNumber} of {totalQuestions}
         </span>
-        {question.topic_tag && (
-          <span className="topic-badge">{question.topic_tag}</span>
-        )}
+        <div className="question-meta-right">
+          {question.topic_tag && (
+            <span className="topic-badge">{question.topic_tag}</span>
+          )}
+        </div>
       </div>
 
       <div className="question-text">
         {question.question_text}
       </div>
+
+      {question.marks && (
+        <div className={`marks-hint marks-hint-${question.marks}`}>
+          <span className="marks-hint-value">
+            [{question.marks} {question.marks === 1 ? 'Mark' : 'Marks'}]
+          </span>
+          <span className="marks-hint-text">{marksHint}</span>
+        </div>
+      )}
 
       {isSupported && (
         <button

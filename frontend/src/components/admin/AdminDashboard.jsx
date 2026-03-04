@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { getContent } from '../../api/adminApi';
 import UploadForm from './UploadForm';
+import Logo from '../shared/Logo';
 import ChapterTable from './ChapterTable';
 import LoadingOverlay from '../shared/LoadingOverlay';
 
@@ -43,8 +44,8 @@ export default function AdminDashboard() {
     <div className="admin-layout">
       <header className="admin-header">
         <div className="admin-header-left">
-          <span className="admin-logo-text">CW</span>
-          <h1>ChapterWise Admin</h1>
+          <Logo size="sm" className="admin-logo-img" />
+          <h1>Admin Panel</h1>
         </div>
         <div className="admin-header-right">
           <span className="admin-user">Logged in as <strong>{username}</strong></span>

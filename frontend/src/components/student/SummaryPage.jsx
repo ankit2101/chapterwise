@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import Logo from '../shared/Logo';
 
 export default function SummaryPage({ summary, chapterName, subject, grade, board }) {
   const navigate = useNavigate();
-  const { total_questions, total_score, max_score, percentage, questions_detail, missed_topics } = summary;
+  const { total_questions, total_score, max_score, percentage, questions_detail, missed_topics, sections } = summary;
 
   const grade_label = percentage >= 80 ? 'Excellent!' :
                       percentage >= 60 ? 'Good work!' :
@@ -16,10 +17,7 @@ export default function SummaryPage({ summary, chapterName, subject, grade, boar
     <div className="summary-page">
       <header className="site-header">
         <div className="header-inner">
-          <div className="logo">
-            <span className="logo-icon">CW</span>
-            <span className="logo-text">ChapterWise</span>
-          </div>
+          <Logo size="md" />
         </div>
       </header>
 
@@ -42,6 +40,29 @@ export default function SummaryPage({ summary, chapterName, subject, grade, boar
           <div className={`score-label ${grade_color}`}>{grade_label}</div>
         </div>
 
+        {sections && sections.length > 0 && (
+          <div className="summary-sections">
+            <h3>Section-wise Score</h3>
+            <div className="sections-table">
+              {sections.map((sec, i) => {
+                const secPct = sec.possible > 0 ? Math.round((sec.earned / sec.possible) * 100) : 0;
+                const sectionLabel = sec.marks === 1 ? 'Section A (1 Mark)' :
+                                     sec.marks === 3 ? 'Section B (3 Marks)' : 'Section C (5 Marks)';
+                return (
+                  <div key={i} className="section-row">
+                    <span className={`section-label marks-badge-${sec.marks}`}>{sectionLabel}</span>
+                    <span className="section-count">{sec.count} Q</span>
+                    <span className="section-score">{sec.earned}/{sec.possible}</span>
+                    <span className={`section-pct ${secPct >= 80 ? 'grade-excellent' : secPct >= 50 ? 'grade-good' : 'grade-low'}`}>
+                      {secPct}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {missed_topics && missed_topics.length > 0 && (
           <div className="summary-missed-topics">
             <h3>Topics to review:</h3>
@@ -61,6 +82,7 @@ export default function SummaryPage({ summary, chapterName, subject, grade, boar
               <div key={i} className={`breakdown-item ${q.score === q.max_score ? 'breakdown-perfect' : 'breakdown-partial'}`}>
                 <div className="breakdown-header">
                   <span className="breakdown-q-num">Q{q.question_number}</span>
+                  {q.marks && <span className={`marks-badge marks-badge-${q.marks} breakdown-marks`}>{q.marks}M</span>}
                   <span className="breakdown-topic">{q.topic_tag}</span>
                   <span className={`breakdown-score ${qPct >= 80 ? 'score-ok' : 'score-partial'}`}>
                     {q.score}/{q.max_score}

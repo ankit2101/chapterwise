@@ -82,7 +82,7 @@ export default function VoiceInput({ value, onChange, disabled }) {
         onChange={handleTextChange}
         placeholder={
           isSupported
-            ? 'Click "Speak Answer" above, or type your answer here...'
+            ? 'Wait for the question to finish reading, then click "Speak Answer" — or type your answer here...'
             : 'Type your answer here...'
         }
         rows={5}
