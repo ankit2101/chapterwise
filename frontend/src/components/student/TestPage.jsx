@@ -32,6 +32,7 @@ export default function TestPage() {
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [answer, setAnswer] = useState('');
   const [evaluation, setEvaluation] = useState(null);
+  const [answeredQuestion, setAnsweredQuestion] = useState(null);
   const [summary, setSummary] = useState(null);
   const [isLastQuestion, setIsLastQuestion] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -144,6 +145,7 @@ export default function TestPage() {
     try {
       const data = await submitAnswer(sessionKey, answer.trim(), studentName);
       if (data.expired) { handleSessionExpired(); return; }
+      setAnsweredQuestion(currentQuestion);
       setEvaluation(data.evaluation);
       setIsLastQuestion(!data.has_next);
 
@@ -168,6 +170,7 @@ export default function TestPage() {
     } else {
       setAnswer('');
       setEvaluation(null);
+      setAnsweredQuestion(null);
       setView(VIEW.QUESTION);
     }
   };
@@ -281,6 +284,7 @@ export default function TestPage() {
         {view === VIEW.FEEDBACK && evaluation && (
           <FeedbackCard
             evaluation={evaluation}
+            question={answeredQuestion}
             onNext={handleNext}
             hasNext={!isLastQuestion}
             isLast={isLastQuestion}

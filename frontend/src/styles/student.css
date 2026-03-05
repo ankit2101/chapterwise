@@ -534,6 +534,45 @@ body {
 }
 
 /* ── Feedback Card ── */
+
+/* Question recap shown at the top of the feedback card */
+.feedback-question-recap {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.feedback-question-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.feedback-question-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+}
+.feedback-question-marks {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--primary-light, #eff6ff);
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.feedback-question-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  line-height: 1.5;
+  margin: 0;
+}
+
 .feedback-card {
   background: white;
   border-radius: var(--radius);
