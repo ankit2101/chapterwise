@@ -100,8 +100,9 @@ def _seed_admin(app):
         print(f"[ChapterWise] Default admin created: {app.config['DEFAULT_ADMIN_USERNAME']}")
 
 
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
     print("\n" + "=" * 50)
     print("  ChapterWise is running!")
     print("  Flask API: http://localhost:5000")
