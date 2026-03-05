@@ -55,7 +55,7 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 ## Prerequisites
 
 - **Python 3.9+**
-- **Node.js 18+** and **npm**
+- **Node.js 24.14.0+** and **npm 10+**
 - An **Anthropic API key** — get one at [console.anthropic.com](https://console.anthropic.com)
 
 ---
