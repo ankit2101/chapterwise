@@ -90,6 +90,21 @@ export async function deleteStudent(id) {
   return handleResponse(res);
 }
 
+export async function getModelConfig() {
+  const res = await fetch(`${BASE}/model-config`, { credentials: 'include' });
+  return handleResponse(res);
+}
+
+export async function saveModel(modelId) {
+  const res = await fetch(`${BASE}/save-model`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ model_id: modelId }),
+  });
+  return handleResponse(res);
+}
+
 export async function getStudentProgress() {
   const res = await fetch(`${BASE}/student-progress`, { credentials: 'include' });
   return handleResponse(res);

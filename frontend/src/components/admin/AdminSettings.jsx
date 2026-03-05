@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext';
-import { changePassword, saveApiKey, getApiKeyStatus } from '../../api/adminApi';
+import { changePassword, saveApiKey, getApiKeyStatus, getModelConfig, saveModel } from '../../api/adminApi';
 import Logo from '../shared/Logo';
 
 export default function AdminSettings() {
@@ -21,9 +21,21 @@ export default function AdminSettings() {
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const [apiKeyMessage, setApiKeyMessage] = useState(null);
 
+  // Model selection state
+  const [modelConfig, setModelConfig] = useState(null);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelMessage, setModelMessage] = useState(null);
+
   useEffect(() => {
     getApiKeyStatus()
       .then(setApiKeyStatus)
+      .catch(() => {});
+    getModelConfig()
+      .then(data => {
+        setModelConfig(data);
+        setSelectedModel(data.current_model);
+      })
       .catch(() => {});
   }, []);
 
@@ -66,6 +78,20 @@ export default function AdminSettings() {
       setApiKeyMessage({ type: 'error', text: err.message });
     } finally {
       setApiKeyLoading(false);
+    }
+  };
+
+  const handleSaveModel = async () => {
+    setModelMessage(null);
+    setModelLoading(true);
+    try {
+      const data = await saveModel(selectedModel);
+      setModelMessage({ type: 'success', text: data.message || 'Model saved.' });
+      setModelConfig(prev => ({ ...prev, current_model: selectedModel }));
+    } catch (err) {
+      setModelMessage({ type: 'error', text: err.message });
+    } finally {
+      setModelLoading(false);
     }
   };
 
@@ -134,6 +160,56 @@ export default function AdminSettings() {
               {apiKeyLoading ? 'Saving...' : 'Save API Key'}
             </button>
           </form>
+        </div>
+
+        {/* Model Selection Section */}
+        <div className="settings-card">
+          <h3>AI Model</h3>
+          <p className="settings-description">
+            Choose which Claude model is used to generate questions and evaluate answers.
+            Haiku is faster and more economical; Sonnet produces richer results.
+          </p>
+
+          {modelMessage && (
+            <div className={`alert alert-${modelMessage.type}`}>{modelMessage.text}</div>
+          )}
+
+          {modelConfig ? (
+            <div className="model-selector">
+              {modelConfig.available_models.map(model => (
+                <label
+                  key={model.id}
+                  className={`model-option ${selectedModel === model.id ? 'model-option--selected' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="claude-model"
+                    value={model.id}
+                    checked={selectedModel === model.id}
+                    onChange={() => setSelectedModel(model.id)}
+                  />
+                  <div className="model-option-body">
+                    <span className="model-option-label">
+                      {model.label}
+                      {modelConfig.current_model === model.id && (
+                        <span className="model-badge-active">Active</span>
+                      )}
+                    </span>
+                    <span className="model-option-desc">{model.description}</span>
+                  </div>
+                </label>
+              ))}
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveModel}
+                disabled={modelLoading || selectedModel === modelConfig.current_model}
+              >
+                {modelLoading ? 'Saving...' : 'Save Model'}
+              </button>
+            </div>
+          ) : (
+            <p className="settings-description">Loading model options…</p>
+          )}
         </div>
 
         {/* Password Section */}

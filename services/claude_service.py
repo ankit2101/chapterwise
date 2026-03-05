@@ -16,6 +16,18 @@ def _get_api_key():
     return current_app.config.get('ANTHROPIC_API_KEY', '')
 
 
+def _get_model():
+    """Resolve model: admin-configured setting takes precedence over config default."""
+    try:
+        from models import AppSettings
+        setting = AppSettings.query.filter_by(key='claude_model').first()
+        if setting and setting.value and setting.value.strip():
+            return setting.value.strip()
+    except Exception:
+        pass
+    return current_app.config.get('CLAUDE_MODEL', 'claude-haiku-4-5-20251001')
+
+
 def _get_client():
     api_key = _get_api_key()
     if not api_key:
@@ -133,7 +145,7 @@ def generate_questions(chapter_text: str, chapter_name: str,
     )
 
     message = client.messages.create(
-        model=current_app.config['CLAUDE_MODEL'],
+        model=_get_model(),
         max_tokens=8192,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -203,7 +215,7 @@ def evaluate_answer(question_text: str, key_points: list,
     )
 
     message = client.messages.create(
-        model=current_app.config['CLAUDE_MODEL'],
+        model=_get_model(),
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}]
     )

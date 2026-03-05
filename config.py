@@ -21,7 +21,19 @@ class Config:
     MAX_CONTENT_LENGTH = 32 * 1024 * 1024  # 32 MB max PDF upload
     ALLOWED_EXTENSIONS = {'pdf'}
     ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
-    CLAUDE_MODEL = 'claude-haiku-4-5-20251001'
+    CLAUDE_MODEL = 'claude-haiku-4-5-20251001'  # default fallback
+    AVAILABLE_MODELS = [
+        {
+            'id': 'claude-haiku-4-5-20251001',
+            'label': 'Claude Haiku',
+            'description': 'Fast & economical — ideal for most classrooms',
+        },
+        {
+            'id': 'claude-sonnet-4-5-20251015',
+            'label': 'Claude Sonnet',
+            'description': 'More capable — richer questions and deeper feedback',
+        },
+    ]
     DEFAULT_ADMIN_USERNAME = 'admin'
     DEFAULT_ADMIN_PASSWORD = 'admin123'
 

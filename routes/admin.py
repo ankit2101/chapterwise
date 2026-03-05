@@ -264,6 +264,45 @@ def save_api_key():
     return jsonify({'success': True, 'message': 'API key saved successfully'})
 
 
+@admin_bp.route('/api/admin/model-config')
+@login_required
+def get_model_config():
+    """Return available models and the currently selected model."""
+    setting = AppSettings.query.filter_by(key='claude_model').first()
+    current_model = (
+        setting.value.strip()
+        if setting and setting.value and setting.value.strip()
+        else current_app.config.get('CLAUDE_MODEL', 'claude-haiku-4-5-20251001')
+    )
+    return jsonify({
+        'current_model': current_model,
+        'available_models': current_app.config.get('AVAILABLE_MODELS', []),
+    })
+
+
+@admin_bp.route('/api/admin/save-model', methods=['POST'])
+@login_required
+def save_model():
+    """Persist the admin's chosen Claude model to AppSettings."""
+    data = request.get_json() or {}
+    model_id = data.get('model_id', '').strip()
+
+    available_ids = [m['id'] for m in current_app.config.get('AVAILABLE_MODELS', [])]
+    if not model_id or model_id not in available_ids:
+        return jsonify({'error': f'Invalid model. Choose from: {", ".join(available_ids)}'}), 400
+
+    setting = AppSettings.query.filter_by(key='claude_model').first()
+    if setting:
+        setting.value = model_id
+    else:
+        setting = AppSettings(key='claude_model', value=model_id)
+        db.session.add(setting)
+    db.session.commit()
+
+    label = next((m['label'] for m in current_app.config['AVAILABLE_MODELS'] if m['id'] == model_id), model_id)
+    return jsonify({'success': True, 'message': f'Model switched to {label}', 'model_id': model_id})
+
+
 @admin_bp.route('/api/admin/api-key-status')
 @login_required
 def api_key_status():
