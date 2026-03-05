@@ -6,6 +6,7 @@ import UploadForm from './UploadForm';
 import Logo from '../shared/Logo';
 import ChapterTable from './ChapterTable';
 import StudentManagement from './StudentManagement';
+import StudentProgress from './StudentProgress';
 import LoadingOverlay from '../shared/LoadingOverlay';
 
 export default function AdminDashboard() {
@@ -89,6 +90,10 @@ export default function AdminDashboard() {
 
         <div className="content-section">
           <StudentManagement />
+        </div>
+
+        <div className="content-section" style={{ marginTop: '1.5rem' }}>
+          <StudentProgress />
         </div>
       </main>
     </div>

@@ -90,6 +90,11 @@ export async function deleteStudent(id) {
   return handleResponse(res);
 }
 
+export async function getStudentProgress() {
+  const res = await fetch(`${BASE}/student-progress`, { credentials: 'include' });
+  return handleResponse(res);
+}
+
 export async function resetStudentPin(id, pin) {
   const res = await fetch(`${BASE}/students/${id}/reset-pin`, {
     method: 'POST',

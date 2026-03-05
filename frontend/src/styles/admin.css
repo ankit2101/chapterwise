@@ -400,6 +400,173 @@
 .modal-card p { color: #6b7280; margin-bottom: 1rem; font-size: 0.9rem; }
 .modal-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
 
+/* ── Student Progress ── */
+.student-progress-section { margin-top: 0; }
+
+.progress-filters {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.progress-search {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #1f2937;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.progress-search:focus { border-color: #1569b8; }
+.progress-status-filter {
+  padding: 0.5rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #1f2937;
+  background: white;
+  outline: none;
+  cursor: pointer;
+}
+
+.progress-table td { vertical-align: top; }
+.badge-fail { background: #fee2e2; color: #dc2626; }
+.badge-active { background: #dbeafe; color: #1569b8; }
+
+/* Detail Modal */
+.progress-detail-modal {
+  max-width: 680px;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.progress-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.progress-detail-header h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+.progress-detail-meta {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+.modal-close-btn { padding: 0.2rem 0.6rem; flex-shrink: 0; }
+
+.progress-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 1rem;
+}
+.progress-stat { text-align: center; }
+.progress-stat-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1569b8;
+  margin-bottom: 0.2rem;
+}
+.progress-stat-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.progress-questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.progress-question-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.875rem;
+}
+.progress-q-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+.progress-q-num {
+  font-weight: 700;
+  color: #1569b8;
+  font-size: 0.875rem;
+}
+.progress-q-topic {
+  font-size: 0.75rem;
+  background: #dbeafe;
+  color: #1569b8;
+  padding: 0.1rem 0.45rem;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.progress-q-score {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #374151;
+}
+.progress-q-text {
+  font-size: 0.875rem;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+.progress-q-answer {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-bottom: 0.35rem;
+}
+.progress-q-feedback {
+  font-size: 0.8rem;
+  color: #374151;
+  background: #f9fafb;
+  border-left: 3px solid #2ec87e;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 0.25rem;
+}
+.progress-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+}
+.pagination-info {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.progress-q-missed {
+  font-size: 0.8rem;
+  color: #dc2626;
+  background: #fef2f2;
+  border-left: 3px solid #fca5a5;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0 6px 6px 0;
+}
+
 /* ── Responsive Admin ── */
 @media (max-width: 768px) {
   .upload-form .form-row { grid-template-columns: 1fr; }
@@ -419,4 +586,8 @@
   .admin-login-card { padding: 1.75rem 1.25rem; }
   .settings-main { max-width: 100%; }
   .settings-card { padding: 1.25rem 1rem; }
+  .progress-detail-summary { grid-template-columns: repeat(2, 1fr); }
+  .progress-detail-modal { max-height: 90vh; }
+  .progress-filters { flex-direction: column; }
+  .progress-search { min-width: 0; }
 }

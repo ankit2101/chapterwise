@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from flask import Blueprint, request, jsonify, session, current_app
 from models import db, Admin, Chapter, AppSettings, Student, TestSession
 from services.pdf_service import extract_text, is_content_sufficient
@@ -337,6 +338,63 @@ def delete_student(student_id):
     db.session.delete(student)
     db.session.commit()
     return jsonify({'success': True})
+
+
+@admin_bp.route('/api/admin/student-progress')
+@login_required
+def student_progress():
+    """Return all test sessions with student/chapter info, scores, and time taken."""
+    sessions = (
+        TestSession.query
+        .order_by(TestSession.created_at.desc())
+        .all()
+    )
+    result = []
+    for s in sessions:
+        answers = json.loads(s.answers_json) if s.answers_json else []
+        questions = json.loads(s.questions_json) if s.questions_json else []
+        total_score = sum(a.get('score', 0) for a in answers)
+        max_score = sum(a.get('max_score', 0) for a in answers)
+        percentage = round((total_score / max_score * 100), 1) if max_score > 0 else None
+
+        duration_seconds = None
+        if s.last_activity and s.created_at:
+            duration_seconds = max(0, int((s.last_activity - s.created_at).total_seconds()))
+
+        chapter = s.chapter
+        result.append({
+            'session_key': s.session_key,
+            'student_name': s.student.name if s.student else 'Guest',
+            'student_id': s.student_id,
+            'chapter_name': chapter.chapter_name,
+            'subject': chapter.subject,
+            'grade': chapter.grade,
+            'board': chapter.board,
+            'status': s.status,
+            'total_score': total_score,
+            'max_score': max_score,
+            'percentage': percentage,
+            'questions_answered': len(answers),
+            'total_questions': len(questions),
+            'duration_seconds': duration_seconds,
+            'started_at': s.created_at.strftime('%d %b %Y, %I:%M %p'),
+            'answers': [
+                {
+                    'question_number': a.get('question_number'),
+                    'question_text': a.get('question_text', ''),
+                    'topic_tag': a.get('topic_tag', ''),
+                    'marks': a.get('marks', 1),
+                    'score': a.get('score', 0),
+                    'max_score': a.get('max_score', 0),
+                    'feedback': a.get('feedback', ''),
+                    'student_answer': a.get('student_answer', ''),
+                    'covered_points': a.get('covered_points', []),
+                    'missed_points': a.get('missed_points', []),
+                }
+                for a in answers
+            ],
+        })
+    return jsonify({'sessions': result})
 
 
 @admin_bp.route('/api/admin/students/<int:student_id>/reset-pin', methods=['POST'])
