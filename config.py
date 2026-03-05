@@ -7,7 +7,13 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'chapterwise-secret-change-in-prod-2024')
+    _secret = os.environ.get('SECRET_KEY', '').strip()
+    if not _secret:
+        raise RuntimeError(
+            "SECRET_KEY is not set. Add it to your .env file.\n"
+            "Generate one with: python3 -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+    SECRET_KEY = _secret
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'chapterwise.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'pdfs')

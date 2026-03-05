@@ -14,12 +14,16 @@ def create_app(config=DevelopmentConfig):
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['STATIC_FOLDER'], exist_ok=True)
 
-    # Enable CORS for development (Vite dev server on :5173)
-    CORS(app, supports_credentials=True, origins=[
+    # CORS: allow localhost in development, production domain in production
+    _cors_origins = [
         'http://localhost:5173',
         'http://127.0.0.1:5173',
         'http://localhost:5000',
-    ])
+    ]
+    _prod_origin = os.environ.get('PRODUCTION_ORIGIN', '').strip()
+    if _prod_origin:
+        _cors_origins.append(_prod_origin)
+    CORS(app, supports_credentials=True, origins=_cors_origins)
 
     # Initialize extensions
     db.init_app(app)
