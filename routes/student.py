@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import db, Chapter, TestSession, Student
 from services import claude_service
 import json
+import random
 import bcrypt
 from datetime import datetime, timedelta
 
@@ -190,6 +191,13 @@ def start_test():
             return jsonify({'error': str(e)}), 500
         except Exception as e:
             return jsonify({'error': f'Could not generate questions: {str(e)}'}), 500
+
+    # Shuffle questions for every new test attempt
+    questions = list(questions)
+    random.shuffle(questions)
+    # Re-number after shuffle so question_number matches display order
+    for i, q in enumerate(questions):
+        q['question_number'] = i + 1
 
     student_id = data.get('student_id')
 
