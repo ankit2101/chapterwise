@@ -12,7 +12,7 @@
       "name": "vite-frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "frontend",
+      "cwd": "/Users/ankiagar/Downloads/ClaudeCode/VaanyaTest/frontend",
       "port": 5173
     }
   ]
