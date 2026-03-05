@@ -29,6 +29,7 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 - **Content management** — View, organise, and delete uploaded chapters
 - **Student progress** — View every student's test attempts, scores, time taken, and per-question breakdown in a searchable, paginated table
 - **Question cache** — Questions are generated once and cached; a "Refresh Questions" button forces regeneration
+- **AI model selection** — Switch between Claude Haiku (fast & economical) and Claude Sonnet (more capable) from the Settings page — no server restart needed
 - **API key management** — Enter the Anthropic API key directly in the UI (no server restarts needed)
 - **Password change** — Update the admin password from the settings page
 - **Secure by default** — bcrypt-hashed passwords, session-based authentication
@@ -45,7 +46,7 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.9+, Flask 3.0, SQLAlchemy, SQLite |
-| AI | Anthropic Claude API (`claude-sonnet-4-6`) |
+| AI | Anthropic Claude API (Haiku & Sonnet; selectable per deployment) |
 | PDF Extraction | pdfplumber |
 | Frontend | React 19, Vite, React Router v7 |
 | Voice Input | Browser Web Speech API (`en-IN`) |
@@ -157,13 +158,14 @@ A convenience script starts the server and opens the browser automatically:
    - **Username:** `admin`
    - **Password:** `admin123`
 3. Go to **Settings** → paste your Anthropic API key → click **Save API Key**
-4. Go to **Dashboard** → **Student Management** section → create student accounts:
+4. (Optional) In **Settings → AI Model**, choose between **Claude Haiku** (faster, cheaper) and **Claude Sonnet** (richer questions, deeper feedback) → click **Save Model**
+5. Go to **Dashboard** → **Student Management** section → create student accounts:
    - Enter a student name and a 4-digit PIN
    - Share the name and PIN with the student (students cannot self-register)
-5. Upload your first PDF:
+6. Upload your first PDF:
    - Select Board, Grade, Subject, and enter a Chapter Name
    - Upload the PDF (up to 32 MB)
-6. The app extracts text automatically. Chapters with very little text (scanned/image PDFs) will show a warning.
+7. The app extracts text automatically. Chapters with very little text (scanned/image PDFs) will show a warning.
 
 > **Change the default password** immediately after first login via Settings → Change Password.
 
@@ -229,7 +231,7 @@ chapterwise/
 ├── routes/
 │   ├── student.py          # /api/student/login, /api/grades, /api/subjects, /api/chapters,
 │   │                       # /api/start-test, /api/submit-answer, /api/session/<key>
-│   └── admin.py            # /api/admin/* (login, upload, delete, password, API key, students, student-progress)
+│   └── admin.py            # /api/admin/* (login, upload, delete, password, API key, model config, students, student-progress)
 │
 ├── services/
 │   ├── pdf_service.py      # pdfplumber text extraction + cleaning
@@ -264,7 +266,7 @@ chapterwise/
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `SECRET_KEY` | Recommended | `chapterwise-secret-change-in-prod-2024` | Flask session secret. Change to a random string before deploying. |
+| `SECRET_KEY` | **Required** | *(none — app will not start without it)* | Flask session secret. Generate with `python3 -c "import secrets; print(secrets.token_hex(32))"`. |
 | `ANTHROPIC_API_KEY` | Optional | *(none)* | Fallback Anthropic API key. Can be set via Admin Panel → Settings instead. |
 
 Generate a secure secret key:
@@ -276,7 +278,8 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 | Setting | Value | Description |
 |---|---|---|
-| `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Claude model used for question generation and evaluation |
+| `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Default Claude model (fallback if not set via Admin Panel) |
+| `AVAILABLE_MODELS` | Haiku, Sonnet | Models selectable from Admin Panel → Settings → AI Model |
 | `MAX_CONTENT_LENGTH` | `32 MB` | Maximum PDF upload size |
 | `SQLALCHEMY_DATABASE_URI` | `sqlite:///chapterwise.db` | SQLite database in the project root |
 | `UPLOAD_FOLDER` | `uploads/pdfs/` | Directory where uploaded PDFs are stored |
@@ -314,6 +317,8 @@ These settings live in `config.py` and can be overridden via environment variabl
 | `POST` | `/api/admin/change-password` | Update admin password |
 | `POST` | `/api/admin/save-api-key` | Store Anthropic API key |
 | `GET` | `/api/admin/api-key-status` | Check if API key is configured |
+| `GET` | `/api/admin/model-config` | Get available models and currently active model |
+| `POST` | `/api/admin/save-model` | Switch the active Claude model |
 | `GET` | `/api/admin/students` | List all students with session counts |
 | `POST` | `/api/admin/students` | Create a new student (name + PIN) |
 | `DELETE` | `/api/admin/students/<id>` | Delete a student account |
@@ -327,6 +332,7 @@ These settings live in `config.py` and can be overridden via environment variabl
 - **Voice input** requires **Google Chrome** (or another Chromium-based browser). Firefox and Safari do not support the Web Speech API. Students on unsupported browsers can type their answers instead.
 - **Image-based PDFs** (scanned documents) will extract very little text. The admin dashboard shows a warning for these files, and tests cannot be started until sufficient text is available.
 - **Question caching** — questions for a chapter are generated once and stored in the database. Use the **Refresh Q** button in the admin dashboard to regenerate them (e.g., after re-uploading a better PDF). Caching must be cleared manually if the question format changes.
+- **Model selection** — switching the Claude model (Haiku ↔ Sonnet) takes effect immediately for all new question generation and answer evaluation; no server restart is required. Previously cached questions are unaffected until regenerated.
 - The app is designed for **local / classroom use**. For internet-facing deployment, set a strong `SECRET_KEY`, use HTTPS, and consider adding rate limiting.
 
 ---
