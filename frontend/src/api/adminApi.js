@@ -110,6 +110,30 @@ export async function getStudentProgress() {
   return handleResponse(res);
 }
 
+export async function bulkUploadChapters(formData) {
+  const res = await fetch(`${BASE}/bulk-upload`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  // Bulk upload returns results even on partial failure — parse JSON regardless
+  const data = await res.json();
+  if (!res.ok && !data.results) {
+    throw new Error(data.error || 'Bulk upload failed');
+  }
+  return data;
+}
+
+export async function renameChapter(id, newName) {
+  const res = await fetch(`${BASE}/chapter/${id}/rename`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ chapter_name: newName }),
+  });
+  return handleResponse(res);
+}
+
 export async function resetStudentPin(id, pin) {
   const res = await fetch(`${BASE}/students/${id}/reset-pin`, {
     method: 'POST',
