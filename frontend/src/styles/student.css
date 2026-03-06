@@ -806,6 +806,7 @@ body {
 .alert-error { background: var(--danger-light); color: var(--danger); }
 .alert-success { background: var(--success-light); color: var(--success); }
 .alert-warning { background: var(--warning-light); color: var(--warning); }
+.alert-info { background: #eff6ff; color: #1d4ed8; }
 .alert-warning-inline { margin-top: 0.25rem; }
 
 /* ── Loading Overlay ── */

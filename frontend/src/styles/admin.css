@@ -747,6 +747,8 @@
 .bulk-results-table tr:last-child td { border-bottom: none; }
 .bulk-results-table tr.row-success td { background: #f0fdf4; }
 .bulk-results-table tr.row-error td { background: #fff7f7; }
+.bulk-results-table tr.row-pending td { background: #fafafa; color: #888; }
+.bulk-processing-indicator { font-style: italic; }
 .bulk-file-cell {
   max-width: 200px;
   overflow: hidden;

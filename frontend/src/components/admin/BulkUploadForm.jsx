@@ -11,6 +11,7 @@ export default function BulkUploadForm({ onUploadSuccess }) {
   const [subject, setSubject] = useState('');
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(null); // { current: N, total: M }
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -79,37 +80,79 @@ export default function BulkUploadForm({ onUploadSuccess }) {
     e.preventDefault();
     setError('');
     setResults(null);
+    setProgress(null);
 
     if (!board || !grade || !subject || files.length === 0) {
       setError('Please fill in all fields and select at least one PDF file.');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('board', board);
-    formData.append('grade', grade);
-    formData.append('subject', subject);
-    files.forEach(f => formData.append('pdf_files', f));
-
     setLoading(true);
-    try {
-      const data = await bulkUploadChapters(formData);
-      setResults(data);
-      if (data.success_count > 0) {
-        // Keep failed files in the list so the admin can retry / investigate
-        const failedNames = new Set(
-          (data.results || []).filter(r => !r.success).map(r => r.filename)
-        );
-        setFiles(prev => prev.filter(f => failedNames.has(f.name)));
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        onUploadSuccess?.();
+
+    // Upload files one at a time to avoid size/timeout limits on the server.
+    // Each request carries a single PDF; results accumulate in real time.
+    const allResults = [];
+    let successCount = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setProgress({ current: i + 1, total: files.length });
+
+      const formData = new FormData();
+      formData.append('board', board);
+      formData.append('grade', grade);
+      formData.append('subject', subject);
+      formData.append('pdf_files', file);
+
+      let fileResult;
+      try {
+        const data = await bulkUploadChapters(formData);
+        // The endpoint returns a results array; grab the first (only) entry.
+        fileResult = data.results?.[0] ?? {
+          filename: file.name,
+          success: false,
+          error: 'Empty response from server.',
+        };
+      } catch (err) {
+        fileResult = { filename: file.name, success: false, error: err.message };
       }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+
+      if (fileResult.success) successCount++;
+      allResults.push(fileResult);
+
+      // Update the results table in real time after each file completes.
+      setResults({
+        results: [...allResults],
+        total: files.length,
+        success_count: successCount,
+        failure_count: allResults.length - successCount,
+        inProgress: i + 1 < files.length, // still more files to go
+      });
+    }
+
+    setProgress(null);
+    setLoading(false);
+
+    if (successCount > 0) {
+      const failedNames = new Set(
+        allResults.filter(r => !r.success).map(r => r.filename)
+      );
+      setFiles(prev => prev.filter(f => failedNames.has(f.name)));
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      onUploadSuccess?.();
     }
   };
+
+  // Derived summary numbers (from live-updating results or final state)
+  const summary = results
+    ? {
+        done: results.results.length,
+        total: results.total,
+        successCount: results.success_count,
+        failureCount: results.failure_count,
+        inProgress: results.inProgress,
+      }
+    : null;
 
   return (
     <div className="upload-form-card">
@@ -121,14 +164,29 @@ export default function BulkUploadForm({ onUploadSuccess }) {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      {results && (
+      {summary && (
         <div className="bulk-results">
-          <div className={`alert ${results.success_count > 0 ? 'alert-success' : 'alert-error'}`}>
-            <strong>
-              {results.success_count} of {results.total} chapter(s) uploaded successfully.
-            </strong>
-            {results.failure_count > 0 && results.success_count > 0 && (
-              <span> {results.failure_count} failed — see details below.</span>
+          {/* Summary banner — updates live */}
+          <div
+            className={`alert ${
+              summary.inProgress
+                ? 'alert-info'
+                : summary.successCount > 0
+                ? 'alert-success'
+                : 'alert-error'
+            }`}
+          >
+            {summary.inProgress ? (
+              <strong>
+                Processing file {summary.done} of {summary.total}…
+              </strong>
+            ) : (
+              <strong>
+                {summary.successCount} of {summary.total} chapter(s) uploaded successfully.
+              </strong>
+            )}
+            {!summary.inProgress && summary.failureCount > 0 && summary.successCount > 0 && (
+              <span> {summary.failureCount} failed — see details below.</span>
             )}
           </div>
 
@@ -141,6 +199,7 @@ export default function BulkUploadForm({ onUploadSuccess }) {
               </tr>
             </thead>
             <tbody>
+              {/* Completed rows */}
               {results.results.map((r, i) => (
                 <tr key={i} className={r.success ? 'row-success' : 'row-error'}>
                   <td className="bulk-file-cell" title={r.filename}>{r.filename}</td>
@@ -223,6 +282,28 @@ export default function BulkUploadForm({ onUploadSuccess }) {
                   </td>
                 </tr>
               ))}
+
+              {/* Pending rows — shown as placeholders while still processing */}
+              {summary.inProgress &&
+                files
+                  .slice(results.results.length)
+                  .map((f, i) => (
+                    <tr key={`pending-${i}`} className="row-pending">
+                      <td className="bulk-file-cell" title={f.name}>{f.name}</td>
+                      <td>
+                        {i === 0 ? (
+                          <span className="text-muted bulk-processing-indicator">
+                            ⏳ Processing…
+                          </span>
+                        ) : (
+                          <span className="text-muted">Waiting…</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="text-muted">—</span>
+                      </td>
+                    </tr>
+                  ))}
             </tbody>
           </table>
         </div>
@@ -327,8 +408,8 @@ export default function BulkUploadForm({ onUploadSuccess }) {
           disabled={loading || files.length === 0}
           style={{ marginTop: '0.5rem' }}
         >
-          {loading
-            ? `Uploading ${files.length} file${files.length !== 1 ? 's' : ''}…`
+          {loading && progress
+            ? `Processing ${progress.current} of ${progress.total}…`
             : `Upload ${files.length || ''} PDF${files.length !== 1 ? 's' : ''}`}
         </button>
       </form>
