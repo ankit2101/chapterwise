@@ -3,7 +3,7 @@ import re
 import json
 from flask import Blueprint, request, jsonify, session, current_app
 from models import db, Admin, Chapter, AppSettings, Student, TestSession
-from services.pdf_service import extract_text, is_content_sufficient
+from services.pdf_service import extract_text, is_content_sufficient, extract_chapter_name
 import bcrypt
 
 admin_bp = Blueprint('admin', __name__)
@@ -178,6 +178,210 @@ def upload():
     if warning:
         result['warning'] = warning
     return jsonify(result), 201
+
+
+@admin_bp.route('/api/admin/bulk-upload', methods=['POST'])
+@login_required
+def bulk_upload():
+    """Upload multiple chapter PDFs at once. Chapter names are auto-extracted from the first page."""
+    import tempfile
+    import shutil
+    import time as time_module
+
+    board = request.form.get('board', '').strip()
+    grade_str = request.form.get('grade', '').strip()
+    subject = request.form.get('subject', '').strip()
+    pdf_files = request.files.getlist('pdf_files')
+
+    # Validate common fields
+    errors = []
+    if not board or board not in ('CBSE', 'ICSE'):
+        errors.append('Board must be CBSE or ICSE.')
+    grade = None
+    try:
+        grade = int(grade_str)
+        if grade not in range(6, 11):
+            errors.append('Grade must be between 6 and 10.')
+    except (ValueError, TypeError):
+        errors.append('Grade must be a number between 6 and 10.')
+    if not subject:
+        errors.append('Subject name is required.')
+    if not pdf_files or all(f.filename == '' for f in pdf_files):
+        errors.append('Please select at least one PDF file.')
+    if errors:
+        return jsonify({'error': '; '.join(errors)}), 400
+
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    results = []
+
+    for pdf_file in pdf_files:
+        if not pdf_file.filename or pdf_file.filename == '':
+            continue
+
+        file_result = {
+            'filename': pdf_file.filename,
+            'success': False,
+            'chapter_name': None,
+            'error': None,
+            'warning': None,
+        }
+
+        if not pdf_file.filename.lower().endswith('.pdf'):
+            file_result['error'] = 'Not a PDF file.'
+            results.append(file_result)
+            continue
+
+        temp_path = None
+        final_path = None
+
+        try:
+            # Save to a temp file so we can extract text before committing
+            with tempfile.NamedTemporaryFile(
+                dir=upload_folder, suffix='.pdf', delete=False
+            ) as tmp:
+                pdf_file.save(tmp)
+                temp_path = tmp.name
+
+            # Extract chapter name from first page
+            chapter_name = extract_chapter_name(temp_path)
+            if not chapter_name:
+                file_result['error'] = (
+                    'Could not extract a chapter name from the first page. '
+                    'Use single upload to enter the name manually.'
+                )
+                results.append(file_result)
+                continue
+
+            chapter_name = chapter_name[:200]
+            file_result['chapter_name'] = chapter_name
+
+            # Duplicate check
+            existing = Chapter.query.filter_by(
+                board=board, grade=grade, subject=subject, chapter_name=chapter_name
+            ).first()
+            if existing:
+                file_result['error'] = (
+                    f'"{chapter_name}" already exists for this board / grade / subject.'
+                )
+                results.append(file_result)
+                continue
+
+            # Determine final path
+            filename = _safe_filename(board, grade, subject, chapter_name)
+            final_path = os.path.join(upload_folder, filename)
+            if os.path.exists(final_path):
+                base, ext = os.path.splitext(filename)
+                filename = f"{base}_{int(time_module.time())}{ext}"
+                final_path = os.path.join(upload_folder, filename)
+
+            shutil.move(temp_path, final_path)
+            temp_path = None  # Already moved — don't delete in finally
+
+            # Extract full text content
+            pdf_content = extract_text(final_path)
+
+            warning = None
+            if not is_content_sufficient(pdf_content):
+                warning = (
+                    'Very little text was extracted. '
+                    'This may be an image-based or scanned PDF.'
+                )
+                file_result['warning'] = warning
+
+            chapter = Chapter(
+                board=board,
+                grade=grade,
+                subject=subject,
+                chapter_name=chapter_name,
+                pdf_path=filename,
+                pdf_content=pdf_content,
+                questions_cache=None,
+            )
+            db.session.add(chapter)
+            db.session.commit()
+
+            file_result['success'] = True
+            file_result['chapter_id'] = chapter.id
+            file_result['text_length'] = len(pdf_content)
+
+        except ValueError as e:
+            db.session.rollback()
+            if final_path and os.path.exists(final_path):
+                try:
+                    os.remove(final_path)
+                except OSError:
+                    pass
+            file_result['error'] = str(e)
+
+        except Exception as e:
+            db.session.rollback()
+            if final_path and os.path.exists(final_path):
+                try:
+                    os.remove(final_path)
+                except OSError:
+                    pass
+            file_result['error'] = f'Unexpected error: {str(e)}'
+
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+
+        results.append(file_result)
+
+    success_count = sum(1 for r in results if r['success'])
+    return jsonify({
+        'results': results,
+        'total': len(results),
+        'success_count': success_count,
+        'failure_count': len(results) - success_count,
+    }), 200 if success_count > 0 else 422
+
+
+@admin_bp.route('/api/admin/chapter/<int:chapter_id>/pdf')
+@login_required
+def serve_chapter_pdf(chapter_id):
+    from flask import send_from_directory
+    chapter = db.session.get(Chapter, chapter_id)
+    if not chapter:
+        return jsonify({'error': 'Chapter not found'}), 404
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    return send_from_directory(
+        upload_folder,
+        chapter.pdf_path,
+        mimetype='application/pdf',
+        as_attachment=False,
+    )
+
+
+@admin_bp.route('/api/admin/chapter/<int:chapter_id>/rename', methods=['PATCH'])
+@login_required
+def rename_chapter(chapter_id):
+    chapter = db.session.get(Chapter, chapter_id)
+    if not chapter:
+        return jsonify({'error': 'Chapter not found'}), 404
+
+    data = request.get_json() or {}
+    new_name = data.get('chapter_name', '').strip()
+
+    if not new_name:
+        return jsonify({'error': 'Chapter name cannot be empty'}), 400
+    if len(new_name) > 200:
+        return jsonify({'error': 'Chapter name must be 200 characters or less'}), 400
+
+    # Duplicate check (exclude self)
+    existing = Chapter.query.filter_by(
+        board=chapter.board, grade=chapter.grade,
+        subject=chapter.subject, chapter_name=new_name
+    ).first()
+    if existing and existing.id != chapter_id:
+        return jsonify({'error': f'"{new_name}" already exists for this board / grade / subject'}), 409
+
+    chapter.chapter_name = new_name
+    db.session.commit()
+    return jsonify({'success': True, 'chapter_name': new_name})
 
 
 @admin_bp.route('/api/admin/chapter/<int:chapter_id>', methods=['DELETE'])

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { getContent } from '../../api/adminApi';
 import UploadForm from './UploadForm';
+import BulkUploadForm from './BulkUploadForm';
 import Logo from '../shared/Logo';
 import ChapterTable from './ChapterTable';
 import StudentManagement from './StudentManagement';
@@ -13,6 +14,7 @@ export default function AdminDashboard() {
   const [content, setContent] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [uploadMode, setUploadMode] = useState('single'); // 'single' | 'bulk'
   const { username, logout } = useAdminAuth();
   const navigate = useNavigate();
 
@@ -74,7 +76,26 @@ export default function AdminDashboard() {
 
         {error && <div className="alert alert-error">{error}</div>}
 
-        <UploadForm onUploadSuccess={loadContent} />
+        {/* Upload mode toggle */}
+        <div className="upload-tabs">
+          <button
+            className={`upload-tab-btn ${uploadMode === 'single' ? 'upload-tab-btn--active' : ''}`}
+            onClick={() => setUploadMode('single')}
+          >
+            Single Upload
+          </button>
+          <button
+            className={`upload-tab-btn ${uploadMode === 'bulk' ? 'upload-tab-btn--active' : ''}`}
+            onClick={() => setUploadMode('bulk')}
+          >
+            Bulk Upload
+          </button>
+        </div>
+
+        {uploadMode === 'single'
+          ? <UploadForm onUploadSuccess={loadContent} />
+          : <BulkUploadForm onUploadSuccess={loadContent} />
+        }
 
         <div className="content-section">
           <div className="section-header">
