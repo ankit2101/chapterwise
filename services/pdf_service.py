@@ -2,19 +2,26 @@ import pdfplumber
 import re
 
 
-def extract_text(pdf_path: str) -> str:
+def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
     """
-    Extract all text from a PDF using pdfplumber.
-    Returns cleaned text string.
+    Extract text from a PDF using pdfplumber.
+    Stops once max_chars of raw text have been collected so large PDFs
+    don't exhaust server memory or hit the gunicorn worker timeout.
+    Each page is flushed from memory immediately after reading.
     Raises ValueError on failure.
     """
     full_text = []
+    total_chars = 0
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
+                page.flush_cache()          # free parsed objects immediately
                 if page_text:
                     full_text.append(page_text)
+                    total_chars += len(page_text)
+                    if total_chars >= max_chars:
+                        break
     except Exception as e:
         raise ValueError(f"PDF extraction failed: {str(e)}")
 
