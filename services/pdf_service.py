@@ -1,35 +1,50 @@
 import pdfplumber
+import pypdf
 import re
 
 
 def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
     """
-    Extract text from a PDF using pdfplumber.
-    Stops once max_chars of raw text have been collected so large PDFs
-    don't exhaust server memory or hit the gunicorn worker timeout.
-    Each page is flushed from memory immediately after reading.
+    Extract text from a PDF using pypdf (fast, low-memory).
+    Stops once max_chars of raw text have been collected.
+    Falls back to pdfplumber if pypdf returns no text.
     Raises ValueError on failure.
     """
-    full_text = []
-    total_chars = 0
+    # --- Primary: pypdf (10-100x faster than pdfminer for text extraction) ---
     try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                page.flush_cache()          # free parsed objects immediately
+        full_text = []
+        total_chars = 0
+        with open(pdf_path, 'rb') as f:
+            reader = pypdf.PdfReader(f)
+            for page in reader.pages:
+                page_text = page.extract_text() or ''
                 if page_text:
                     full_text.append(page_text)
                     total_chars += len(page_text)
                     if total_chars >= max_chars:
                         break
+        if full_text:
+            return _clean_text('\n'.join(full_text))
+    except Exception:
+        pass  # fall through to pdfplumber
+
+    # --- Fallback: pdfplumber (handles some PDFs pypdf can't parse) ---
+    try:
+        full_text = []
+        total_chars = 0
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                page.flush_cache()
+                if page_text:
+                    full_text.append(page_text)
+                    total_chars += len(page_text)
+                    if total_chars >= max_chars:
+                        break
+        raw = '\n'.join(full_text)
+        return _clean_text(raw)
     except Exception as e:
         raise ValueError(f"PDF extraction failed: {str(e)}")
-
-    if not full_text:
-        return ''
-
-    raw = '\n'.join(full_text)
-    return _clean_text(raw)
 
 
 def _clean_text(text: str) -> str:
