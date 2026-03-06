@@ -1,7 +1,17 @@
 const BASE = '/api/admin';
 
+async function parseJson(res) {
+  try {
+    return await res.json();
+  } catch {
+    if (res.status === 429) throw new Error('Too many requests — please wait a moment and try again.');
+    if (res.status === 502 || res.status === 503) throw new Error('Server is temporarily unavailable. Please try again shortly.');
+    throw new Error(`Server returned an unexpected response (${res.status}). Please try again.`);
+  }
+}
+
 async function handleResponse(res) {
-  const data = await res.json();
+  const data = await parseJson(res);
   if (!res.ok) {
     throw new Error(data.error || `Request failed: ${res.status}`);
   }
@@ -117,7 +127,7 @@ export async function bulkUploadChapters(formData) {
     body: formData,
   });
   // Bulk upload returns results even on partial failure — parse JSON regardless
-  const data = await res.json();
+  const data = await parseJson(res);
   if (!res.ok && !data.results) {
     throw new Error(data.error || 'Bulk upload failed');
   }
