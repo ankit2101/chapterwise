@@ -181,6 +181,14 @@ export default function BulkUploadForm({ onUploadSuccess }) {
                     ) : r.chapter_name ? (
                       <span className="chapter-name-cell">
                         {r.chapter_name}
+                        {r.renamed && (
+                          <span
+                            className="badge badge-warning"
+                            title="A chapter with the extracted name already existed; a number was appended automatically."
+                          >
+                            auto-renamed
+                          </span>
+                        )}
                         {r.success && (
                           <button
                             type="button"

@@ -27,6 +27,22 @@ def _safe_filename(board, grade, subject, chapter_name):
     return f"{board}_grade{grade}_{safe_subject}_{safe_chapter}.pdf"
 
 
+def _unique_chapter_name(board, grade, subject, base_name):
+    """
+    Return base_name if no duplicate exists for this board/grade/subject,
+    otherwise append (2), (3) … until a unique name is found.
+    """
+    name = base_name
+    counter = 2
+    while Chapter.query.filter_by(
+        board=board, grade=grade, subject=subject, chapter_name=name
+    ).first():
+        suffix = f' ({counter})'
+        name = base_name[: 200 - len(suffix)] + suffix
+        counter += 1
+    return name
+
+
 # ─── Auth ───
 
 @admin_bp.route('/api/admin/login', methods=['POST'])
@@ -253,18 +269,13 @@ def bulk_upload():
                 continue
 
             chapter_name = chapter_name[:200]
-            file_result['chapter_name'] = chapter_name
 
-            # Duplicate check
-            existing = Chapter.query.filter_by(
-                board=board, grade=grade, subject=subject, chapter_name=chapter_name
-            ).first()
-            if existing:
-                file_result['error'] = (
-                    f'"{chapter_name}" already exists for this board / grade / subject.'
-                )
-                results.append(file_result)
-                continue
+            # Auto-deduplicate: append (2), (3) … if a chapter with the same name exists
+            original_name = chapter_name
+            chapter_name = _unique_chapter_name(board, grade, subject, chapter_name)
+            file_result['chapter_name'] = chapter_name
+            if chapter_name != original_name:
+                file_result['renamed'] = True
 
             # Determine final path
             filename = _safe_filename(board, grade, subject, chapter_name)
