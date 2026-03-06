@@ -25,7 +25,10 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 
 ### Admin Panel
 - **Student management** — Create student accounts with name + 4-digit PIN, reset PINs, and delete students from the dashboard
-- **PDF upload** — Attach a board, grade, subject, and chapter name to any PDF
+- **Single PDF upload** — Attach a board, grade, subject, and chapter name to any PDF
+- **Bulk PDF upload** — Upload multiple PDFs at once for the same board/grade/subject; chapter names are auto-extracted from the first page of each PDF
+- **Chapter rename** — Rename any chapter inline, both immediately after a bulk upload and from the Uploaded Content table — duplicate names within the same board/grade/subject are rejected
+- **PDF viewer** — Click any chapter name in the Uploaded Content table to open the original PDF in a full-screen modal viewer
 - **Content management** — View, organise, and delete uploaded chapters
 - **Student progress** — View every student's test attempts, scores, time taken, and per-question breakdown in a searchable, paginated table
 - **Question cache** — Questions are generated once and cached; a "Refresh Questions" button forces regeneration
@@ -162,10 +165,11 @@ A convenience script starts the server and opens the browser automatically:
 5. Go to **Dashboard** → **Student Management** section → create student accounts:
    - Enter a student name and a 4-digit PIN
    - Share the name and PIN with the student (students cannot self-register)
-6. Upload your first PDF:
-   - Select Board, Grade, Subject, and enter a Chapter Name
-   - Upload the PDF (up to 32 MB)
+6. Upload your first PDF(s):
+   - **Single upload** — Select Board, Grade, Subject, enter a Chapter Name, and upload one PDF
+   - **Bulk upload** — Select Board, Grade, Subject, then drag-and-drop multiple PDFs; chapter names are extracted automatically from each PDF's first page. After upload, use the ✏ button to rename any chapter directly in the results table.
 7. The app extracts text automatically. Chapters with very little text (scanned/image PDFs) will show a warning.
+8. Click any chapter name in the **Uploaded Content** table to preview the original PDF in a modal viewer, or click ✏ to rename it.
 
 > **Change the default password** immediately after first login via Settings → Change Password.
 
@@ -231,7 +235,8 @@ chapterwise/
 ├── routes/
 │   ├── student.py          # /api/student/login, /api/grades, /api/subjects, /api/chapters,
 │   │                       # /api/start-test, /api/submit-answer, /api/session/<key>
-│   └── admin.py            # /api/admin/* (login, upload, delete, password, API key, model config, students, student-progress)
+│   └── admin.py            # /api/admin/* (login, upload, bulk-upload, chapter/pdf, chapter/rename,
+│                           #               delete, password, API key, model config, students, student-progress)
 │
 ├── services/
 │   ├── pdf_service.py      # pdfplumber text extraction + cleaning
@@ -247,8 +252,9 @@ chapterwise/
 │       ├── components/
 │       │   ├── student/     # StudentLogin, SelectionPage, TestPage,
 │       │   │                # QuestionCard, VoiceInput, FeedbackCard, SummaryPage
-│       │   ├── admin/       # AdminLogin, AdminDashboard, UploadForm,
-│       │   │                # ChapterTable, AdminSettings, StudentManagement, StudentProgress
+│       │   ├── admin/       # AdminLogin, AdminDashboard, UploadForm, BulkUploadForm,
+│       │   │                # ChapterTable (with PDF viewer + rename), AdminSettings,
+│       │   │                # StudentManagement, StudentProgress
 │       │   └── shared/      # LoadingOverlay, Toast, ProtectedRoute,
 │       │                    # StudentProtectedRoute, Logo
 │       └── styles/          # student.css, admin.css
@@ -312,7 +318,10 @@ These settings live in `config.py` and can be overridden via environment variabl
 | `POST` | `/api/admin/login` | Authenticate admin |
 | `POST` | `/api/admin/logout` | Clear session |
 | `GET` | `/api/admin/content` | All chapters grouped by board/grade/subject |
-| `POST` | `/api/admin/upload` | Upload PDF + metadata |
+| `POST` | `/api/admin/upload` | Upload a single PDF + metadata |
+| `POST` | `/api/admin/bulk-upload` | Upload multiple PDFs; chapter names auto-extracted from first page |
+| `GET` | `/api/admin/chapter/<id>/pdf` | Serve chapter PDF inline (used by the PDF modal viewer) |
+| `PATCH` | `/api/admin/chapter/<id>/rename` | Rename a chapter (duplicate-safe within board/grade/subject) |
 | `DELETE` | `/api/admin/chapter/<id>` | Delete chapter and PDF file |
 | `POST` | `/api/admin/change-password` | Update admin password |
 | `POST` | `/api/admin/save-api-key` | Store Anthropic API key |
