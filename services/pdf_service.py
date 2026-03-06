@@ -16,7 +16,7 @@ def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
     # --- Strategy 1: pdftotext (fastest) ---
     try:
         result = subprocess.run(
-            ['pdftotext', '-layout', '-enc', 'UTF-8', pdf_path, '-'],
+            ['/usr/bin/pdftotext', '-layout', '-enc', 'UTF-8', pdf_path, '-'],
             capture_output=True,
             text=True,
             timeout=30,
@@ -91,7 +91,7 @@ def extract_chapter_name(pdf_path: str) -> str:
     # --- Try pdftotext first page ---
     try:
         result = subprocess.run(
-            ['pdftotext', '-f', '1', '-l', '1', '-enc', 'UTF-8', pdf_path, '-'],
+            ['/usr/bin/pdftotext', '-f', '1', '-l', '1', '-enc', 'UTF-8', pdf_path, '-'],
             capture_output=True,
             text=True,
             timeout=15,
