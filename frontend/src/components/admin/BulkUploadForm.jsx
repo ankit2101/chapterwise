@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { bulkUploadChapters, renameChapter } from '../../api/adminApi';
+import { SUBJECTS } from '../../constants/subjects';
 
 const BOARDS = ['CBSE', 'ICSE'];
 const GRADES = [6, 7, 8, 9, 10];
@@ -79,7 +80,7 @@ export default function BulkUploadForm({ onUploadSuccess }) {
     setError('');
     setResults(null);
 
-    if (!board || !grade || !subject.trim() || files.length === 0) {
+    if (!board || !grade || !subject || files.length === 0) {
       setError('Please fill in all fields and select at least one PDF file.');
       return;
     }
@@ -87,7 +88,7 @@ export default function BulkUploadForm({ onUploadSuccess }) {
     const formData = new FormData();
     formData.append('board', board);
     formData.append('grade', grade);
-    formData.append('subject', subject.trim());
+    formData.append('subject', subject);
     files.forEach(f => formData.append('pdf_files', f));
 
     setLoading(true);
@@ -248,14 +249,14 @@ export default function BulkUploadForm({ onUploadSuccess }) {
 
         <div className="form-group">
           <label htmlFor="bulk-subject">Subject</label>
-          <input
+          <select
             id="bulk-subject"
-            type="text"
             value={subject}
             onChange={e => setSubject(e.target.value)}
-            placeholder="e.g. Science, Mathematics, English"
-            maxLength={100}
-          />
+          >
+            <option value="">Select Subject</option>
+            {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
 
         {/* Drop Zone */}
