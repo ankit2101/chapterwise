@@ -625,6 +625,39 @@
   border-radius: 0 6px 6px 0;
 }
 
+/* ── Main Admin Tabs ── */
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+.admin-tab-btn {
+  padding: 0.65rem 1.4rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.admin-tab-btn:hover { color: #1569b8; }
+.admin-tab-btn--active {
+  color: #1569b8;
+  border-bottom-color: #1569b8;
+}
+.admin-tab-panel {
+  animation: tabFadeIn 0.15s ease;
+}
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Upload Mode Tabs ── */
 .upload-tabs {
   display: flex;
