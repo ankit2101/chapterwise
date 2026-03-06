@@ -1,3 +1,4 @@
+import subprocess
 import pdfplumber
 import pypdf
 import re
@@ -5,12 +6,27 @@ import re
 
 def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
     """
-    Extract text from a PDF using pypdf (fast, low-memory).
+    Extract text from a PDF.  Three strategies, fastest first:
+      1. pdftotext (poppler C binary) — handles complex/large PDFs in seconds
+      2. pypdf — pure-Python fallback, good for standard PDFs
+      3. pdfplumber — last resort, slowest but broadest format support
     Stops once max_chars of raw text have been collected.
-    Falls back to pdfplumber if pypdf returns no text.
-    Raises ValueError on failure.
+    Raises ValueError if all strategies fail.
     """
-    # --- Primary: pypdf (10-100x faster than pdfminer for text extraction) ---
+    # --- Strategy 1: pdftotext (fastest) ---
+    try:
+        result = subprocess.run(
+            ['pdftotext', '-layout', '-enc', 'UTF-8', pdf_path, '-'],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return _clean_text(result.stdout[:max_chars])
+    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+        pass
+
+    # --- Strategy 2: pypdf ---
     try:
         full_text = []
         total_chars = 0
@@ -26,9 +42,9 @@ def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
         if full_text:
             return _clean_text('\n'.join(full_text))
     except Exception:
-        pass  # fall through to pdfplumber
+        pass
 
-    # --- Fallback: pdfplumber (handles some PDFs pypdf can't parse) ---
+    # --- Strategy 3: pdfplumber (last resort) ---
     try:
         full_text = []
         total_chars = 0
@@ -41,8 +57,7 @@ def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
                     total_chars += len(page_text)
                     if total_chars >= max_chars:
                         break
-        raw = '\n'.join(full_text)
-        return _clean_text(raw)
+        return _clean_text('\n'.join(full_text))
     except Exception as e:
         raise ValueError(f"PDF extraction failed: {str(e)}")
 
@@ -69,22 +84,34 @@ def is_content_sufficient(text: str, min_chars: int = 300) -> bool:
 def extract_chapter_name(pdf_path: str) -> str:
     """
     Extract the chapter name from the first page of a PDF.
-
-    Strategy:
-    1. Look for 'Chapter N' patterns (e.g. 'Chapter 1 – The French Revolution',
-       or 'Chapter 1' on one line and the title on the next).
-    2. Fall back to the first substantial non-trivial line on the page.
-
-    Returns empty string if nothing useful is found.
+    Uses pdftotext for the first page (fastest), falls back to pdfplumber.
     """
+    page_text = ''
+
+    # --- Try pdftotext first page ---
     try:
-        with pdfplumber.open(pdf_path) as pdf:
-            if not pdf.pages:
-                return ''
-            page_text = pdf.pages[0].extract_text()
-            if not page_text:
-                return ''
-    except Exception:
+        result = subprocess.run(
+            ['pdftotext', '-f', '1', '-l', '1', '-enc', 'UTF-8', pdf_path, '-'],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode == 0:
+            page_text = result.stdout
+    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+        pass
+
+    # --- Fallback: pdfplumber first page ---
+    if not page_text.strip():
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                if not pdf.pages:
+                    return ''
+                page_text = pdf.pages[0].extract_text() or ''
+        except Exception:
+            return ''
+
+    if not page_text.strip():
         return ''
 
     lines = [l.strip() for l in page_text.split('\n')]
@@ -93,13 +120,15 @@ def extract_chapter_name(pdf_path: str) -> str:
     if not lines:
         return ''
 
-    chapter_re = re.compile(r'chapter\s+\d+', re.IGNORECASE)
+    chapter_re = re.compile(r'chapter\s*\d+', re.IGNORECASE)
 
     for i, line in enumerate(lines):
-        if chapter_re.search(line):
+        # Normalise spaces so "C hapter 1" → "Chapter 1"
+        normalised = re.sub(r'\s+', ' ', line)
+        if chapter_re.search(normalised):
             # Title follows on the same line after "Chapter N[:.–-]?"
             title_after = re.sub(
-                r'chapter\s+\d+\s*[:\.\-–—]?\s*', '', line, flags=re.IGNORECASE
+                r'chapter\s*\d+\s*[:\.\-–—]?\s*', '', normalised, flags=re.IGNORECASE
             ).strip()
             if title_after and len(title_after) > 3:
                 return title_after[:200]
@@ -111,7 +140,7 @@ def extract_chapter_name(pdf_path: str) -> str:
                     return next_line[:200]
 
             # Whole line is the best we have (e.g. "Chapter 1")
-            return line[:200]
+            return normalised[:200]
 
     # Fallback: first substantial line (likely the heading/title)
     for line in lines:
