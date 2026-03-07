@@ -76,6 +76,59 @@ def student_login():
     return jsonify(response)
 
 
+@student_bp.route('/api/hint', methods=['POST'])
+def get_hint():
+    """Generate a context-aware hint for the current question."""
+    data = request.get_json() or {}
+    session_key = data.get('session_key', '').strip()
+    partial_answer = data.get('answer_text', '').strip()
+
+    if not session_key:
+        return jsonify({'error': 'session_key required'}), 400
+
+    session = TestSession.query.filter_by(session_key=session_key).first()
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+    if session.status != 'active':
+        return jsonify({'error': 'Session is not active'}), 400
+
+    questions = json.loads(session.questions_json)
+    idx = session.current_question_index
+    if idx >= len(questions):
+        return jsonify({'error': 'No current question'}), 400
+
+    current_q = questions[idx]
+    chapter = session.chapter
+
+    # Collect previous answers on the same topic to give context-aware hints
+    topic_tag = current_q.get('topic_tag', '')
+    past_answers = json.loads(session.answers_json)
+    related_previous = [
+        {
+            'question_text': a['question_text'],
+            'student_answer': a['student_answer'],
+        }
+        for a in past_answers
+        if topic_tag and a.get('topic_tag') == topic_tag and a.get('student_answer')
+    ]
+
+    try:
+        hint = claude_service.generate_hint(
+            question_text=current_q['question_text'],
+            key_points=current_q['key_points'],
+            marks=current_q.get('marks', 1),
+            topic_tag=topic_tag,
+            partial_answer=partial_answer,
+            related_previous_answers=related_previous,
+            grade=chapter.grade,
+        )
+        return jsonify({'hint': hint})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': f'Could not generate hint: {str(e)}'}), 500
+
+
 @student_bp.route('/api/student/session-ping', methods=['POST'])
 def session_ping():
     """Heartbeat to keep session alive; also checks for timeout."""

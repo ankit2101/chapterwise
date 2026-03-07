@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { submitAnswer, getSession, sessionPing } from '../../api/studentApi';
+import { submitAnswer, getSession, sessionPing, requestHint } from '../../api/studentApi';
 import QuestionCard from './QuestionCard';
 import VoiceInput from './VoiceInput';
 import FeedbackCard from './FeedbackCard';
@@ -39,6 +39,9 @@ export default function TestPage() {
   const [error, setError] = useState('');
   const [studentName, setStudentName] = useState('');
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [hint, setHint] = useState('');
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
 
   const inactivityWarnTimer = useRef(null);
   const inactivityExpireTimer = useRef(null);
@@ -164,11 +167,27 @@ export default function TestPage() {
     }
   };
 
+  const handleRequestHint = async () => {
+    setHintLoading(true);
+    try {
+      const data = await requestHint(sessionKey, answer);
+      setHint(data.hint);
+      setHintUsed(true);
+    } catch (err) {
+      setHint('Sorry, could not generate a hint right now. Please try again.');
+      setHintUsed(true);
+    } finally {
+      setHintLoading(false);
+    }
+  };
+
   const handleNext = () => {
     if (isLastQuestion) {
       setView(VIEW.SUMMARY);
     } else {
       setAnswer('');
+      setHint('');
+      setHintUsed(false);
       setEvaluation(null);
       setAnsweredQuestion(null);
       setView(VIEW.QUESTION);
@@ -259,6 +278,10 @@ export default function TestPage() {
               question={currentQuestion}
               currentNumber={currentQuestion.question_number}
               totalQuestions={totalQuestions}
+              onRequestHint={handleRequestHint}
+              hint={hint}
+              hintLoading={hintLoading}
+              hintUsed={hintUsed}
             />
 
             <div className="answer-section">

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import useTextToSpeech from '../../hooks/useTextToSpeech';
 
-export default function QuestionCard({ question, currentNumber, totalQuestions }) {
+export default function QuestionCard({ question, currentNumber, totalQuestions, onRequestHint, hint, hintLoading, hintUsed }) {
   const { speak, stop, isSpeaking, isSupported } = useTextToSpeech();
 
   // Auto-read question when it changes
@@ -60,21 +60,43 @@ export default function QuestionCard({ question, currentNumber, totalQuestions }
         </div>
       )}
 
-      {isSupported && (
+      <div className="question-btn-row">
+        {isSupported && (
+          <button
+            type="button"
+            className={`btn-replay ${isSpeaking ? 'btn-replay-active' : ''}`}
+            onClick={() => {
+              if (isSpeaking) {
+                stop();
+              } else {
+                speak(`Question ${question.question_number}. ${question.question_text}`);
+              }
+            }}
+            title={isSpeaking ? 'Stop reading' : 'Read question aloud'}
+          >
+            {isSpeaking ? '⏸ Stop Reading' : '🔊 Read Aloud'}
+          </button>
+        )}
+
         <button
           type="button"
-          className={`btn-replay ${isSpeaking ? 'btn-replay-active' : ''}`}
-          onClick={() => {
-            if (isSpeaking) {
-              stop();
-            } else {
-              speak(`Question ${question.question_number}. ${question.question_text}`);
-            }
-          }}
-          title={isSpeaking ? 'Stop reading' : 'Read question aloud'}
+          className={`btn-hint ${hintUsed ? 'btn-hint--used' : ''}`}
+          onClick={onRequestHint}
+          disabled={hintLoading || hintUsed}
+          title={hintUsed ? 'Hint already used for this question' : 'Get a hint for this question'}
         >
-          {isSpeaking ? '⏸ Stop Reading' : '🔊 Read Aloud'}
+          {hintLoading ? '⏳ Getting hint…' : hintUsed ? '💡 Hint used' : '💡 Get Hint'}
         </button>
+      </div>
+
+      {(hint || hintLoading) && (
+        <div className={`hint-box ${hintLoading && !hint ? 'hint-box--loading' : ''}`}>
+          <span className="hint-label">💡 Hint</span>
+          {hint
+            ? <p className="hint-text">{hint}</p>
+            : <p className="hint-text hint-text--loading">Generating your hint…</p>
+          }
+        </div>
       )}
     </div>
   );
