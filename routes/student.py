@@ -36,11 +36,11 @@ def student_login():
     student = Student.query.filter_by(name_lower=name_lower).first()
 
     if not student:
-        return jsonify({'error': 'Name not found. Ask your teacher to create your account.'}), 404
+        return jsonify({'error': 'Invalid name or PIN. If you are new, ask your teacher to create your account.'}), 401
 
     # Verify PIN
     if not bcrypt.checkpw(pin.encode('utf-8'), student.pin_hash.encode('utf-8')):
-        return jsonify({'error': 'Incorrect PIN. Try again.'}), 401
+        return jsonify({'error': 'Invalid name or PIN. If you are new, ask your teacher to create your account.'}), 401
 
     # Expire stale sessions
     _expire_old_sessions(student.id)
