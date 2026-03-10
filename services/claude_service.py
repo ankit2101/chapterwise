@@ -1,7 +1,12 @@
 import anthropic
 import json
 import re
+import time
 from flask import current_app
+
+# Simple TTL cache for model setting — avoids a DB round-trip on every Claude call
+_model_cache: dict = {'value': None, 'expires_at': 0.0}
+_MODEL_CACHE_TTL = 60  # seconds
 
 
 def _get_api_key():
@@ -17,15 +22,24 @@ def _get_api_key():
 
 
 def _get_model():
-    """Resolve model: admin-configured setting takes precedence over config default."""
+    """Resolve model: admin-configured setting takes precedence over config default.
+    Result is cached for _MODEL_CACHE_TTL seconds to avoid a DB hit on every call."""
+    now = time.monotonic()
+    if _model_cache['value'] is not None and now < _model_cache['expires_at']:
+        return _model_cache['value']
+
+    model = current_app.config.get('CLAUDE_MODEL', 'claude-haiku-4-5-20251001')
     try:
         from models import AppSettings
         setting = AppSettings.query.filter_by(key='claude_model').first()
         if setting and setting.value and setting.value.strip():
-            return setting.value.strip()
+            model = setting.value.strip()
     except Exception:
         pass
-    return current_app.config.get('CLAUDE_MODEL', 'claude-haiku-4-5-20251001')
+
+    _model_cache['value'] = model
+    _model_cache['expires_at'] = now + _MODEL_CACHE_TTL
+    return model
 
 
 def _get_client():

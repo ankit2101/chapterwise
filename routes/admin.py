@@ -1,10 +1,18 @@
 import os
 import re
 import json
+import shutil
+import tempfile
+import time as time_module
 from flask import Blueprint, request, jsonify, session, current_app
 from models import db, Admin, Chapter, AppSettings, Student, TestSession
 from services.pdf_service import extract_text, is_content_sufficient, extract_chapter_name
 import bcrypt
+
+ALLOWED_SUBJECTS = [
+    'Maths', 'Physics', 'Chemistry', 'Biology',
+    'History', 'Civics', 'Geography', 'Hindi', 'English',
+]
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -27,16 +35,22 @@ def _safe_filename(board, grade, subject, chapter_name):
     return f"{board}_grade{grade}_{safe_subject}_{safe_chapter}.pdf"
 
 
-def _unique_chapter_name(board, grade, subject, base_name):
+def _unique_chapter_name(board, grade, subject, base_name, max_attempts=999):
     """
     Return base_name if no duplicate exists for this board/grade/subject,
     otherwise append (2), (3) … until a unique name is found.
+    Raises ValueError if a unique name cannot be found within max_attempts.
     """
     name = base_name
     counter = 2
     while Chapter.query.filter_by(
         board=board, grade=grade, subject=subject, chapter_name=name
     ).first():
+        if counter > max_attempts:
+            raise ValueError(
+                f'Could not generate a unique chapter name for "{base_name}" '
+                f'after {max_attempts} attempts.'
+            )
         suffix = f' ({counter})'
         name = base_name[: 200 - len(suffix)] + suffix
         counter += 1
@@ -126,6 +140,8 @@ def upload():
         errors.append('Grade must be a number between 6 and 10.')
     if not subject:
         errors.append('Subject name is required.')
+    elif subject not in ALLOWED_SUBJECTS:
+        errors.append(f'Subject must be one of: {", ".join(ALLOWED_SUBJECTS)}.')
     if not chapter_name:
         errors.append('Chapter name is required.')
     if len(chapter_name) > 200:
@@ -152,8 +168,7 @@ def upload():
     # Handle filename collision
     if os.path.exists(upload_path):
         base, ext = os.path.splitext(filename)
-        import time
-        filename = f"{base}_{int(time.time())}{ext}"
+        filename = f"{base}_{int(time_module.time())}{ext}"
         upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
 
     pdf_file.save(upload_path)
@@ -200,10 +215,6 @@ def upload():
 @login_required
 def bulk_upload():
     """Upload multiple chapter PDFs at once. Chapter names are auto-extracted from the first page."""
-    import tempfile
-    import shutil
-    import time as time_module
-
     board = request.form.get('board', '').strip()
     grade_str = request.form.get('grade', '').strip()
     subject = request.form.get('subject', '').strip()
@@ -222,6 +233,8 @@ def bulk_upload():
         errors.append('Grade must be a number between 6 and 10.')
     if not subject:
         errors.append('Subject name is required.')
+    elif subject not in ALLOWED_SUBJECTS:
+        errors.append(f'Subject must be one of: {", ".join(ALLOWED_SUBJECTS)}.')
     if not pdf_files or all(f.filename == '' for f in pdf_files):
         errors.append('Please select at least one PDF file.')
     if errors:
@@ -539,6 +552,13 @@ def save_model():
         db.session.add(setting)
     db.session.commit()
 
+    # Invalidate the model cache in claude_service so next call picks up the new model
+    try:
+        from services import claude_service
+        claude_service._model_cache['value'] = None
+    except Exception:
+        pass
+
     label = next((m['label'] for m in current_app.config['AVAILABLE_MODELS'] if m['id'] == model_id), model_id)
     return jsonify({'success': True, 'message': f'Model switched to {label}', 'model_id': model_id})
 
@@ -645,10 +665,10 @@ def student_progress():
             'session_key': s.session_key,
             'student_name': s.student.name if s.student else 'Guest',
             'student_id': s.student_id,
-            'chapter_name': chapter.chapter_name,
-            'subject': chapter.subject,
-            'grade': chapter.grade,
-            'board': chapter.board,
+            'chapter_name': chapter.chapter_name if chapter else '(deleted)',
+            'subject': chapter.subject if chapter else '',
+            'grade': chapter.grade if chapter else None,
+            'board': chapter.board if chapter else '',
             'status': s.status,
             'total_score': total_score,
             'max_score': max_score,

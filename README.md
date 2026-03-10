@@ -264,7 +264,7 @@ chapterwise/
 │
 ├── routes/
 │   ├── student.py          # /api/student/login, /api/grades, /api/subjects, /api/chapters,
-│   │                       # /api/start-test, /api/submit-answer, /api/hint, /api/session/<key>
+│   │                       # /api/start-test, /api/submit-answer, /api/student/hint, /api/session/<key>
 │   └── admin.py            # /api/admin/* (login, upload, bulk-upload, chapter/pdf, chapter/rename,
 │                           #               delete, password, API key, model config, students, student-progress)
 │
