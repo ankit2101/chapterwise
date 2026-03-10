@@ -4,6 +4,7 @@ import { getGrades, getSubjects, getChapters, startTest } from '../../api/studen
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import LoadingOverlay from '../shared/LoadingOverlay';
 import Logo from '../shared/Logo';
+import { SUBJECTS } from '../../constants/subjects';
 
 const BOARDS = ['CBSE', 'ICSE'];
 
@@ -44,7 +45,19 @@ export default function SelectionPage() {
     setChapterId('');
     setLoading(true);
     getSubjects(board, grade)
-      .then(data => setSubjects(data.subjects || []))
+      .then(data => {
+        const apiSubjects = data.subjects || [];
+        // Sort by predefined order; subjects not in the list go to the end
+        const sorted = [...apiSubjects].sort((a, b) => {
+          const ia = SUBJECTS.indexOf(a);
+          const ib = SUBJECTS.indexOf(b);
+          if (ia === -1 && ib === -1) return a.localeCompare(b);
+          if (ia === -1) return 1;
+          if (ib === -1) return -1;
+          return ia - ib;
+        });
+        setSubjects(sorted);
+      })
       .catch(() => setSubjects([]))
       .finally(() => setLoading(false));
   }, [board, grade]);

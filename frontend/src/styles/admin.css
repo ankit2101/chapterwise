@@ -2,6 +2,64 @@
    ChapterWise — Admin Panel Styles
    ────────────────────────────────────────────── */
 
+/* ── Model Selector ── */
+.model-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.model-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: #f8fafc;
+}
+.model-option:hover {
+  border-color: #1569b8;
+  background: #eff6ff;
+}
+.model-option--selected {
+  border-color: #1569b8;
+  background: #eff6ff;
+}
+.model-option input[type="radio"] {
+  margin-top: 3px;
+  accent-color: #1569b8;
+  flex-shrink: 0;
+}
+.model-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.model-option-label {
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.model-badge-active {
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #2ec87e;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.model-option-desc {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
 /* ── Admin Login ── */
 .admin-login-page {
   min-height: 100vh;
@@ -400,6 +458,349 @@
 .modal-card p { color: #6b7280; margin-bottom: 1rem; font-size: 0.9rem; }
 .modal-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
 
+/* ── Student Progress ── */
+.student-progress-section { margin-top: 0; }
+
+.progress-filters {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.progress-search {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #1f2937;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.progress-search:focus { border-color: #1569b8; }
+.progress-status-filter {
+  padding: 0.5rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #1f2937;
+  background: white;
+  outline: none;
+  cursor: pointer;
+}
+
+.progress-table td { vertical-align: top; }
+.badge-fail { background: #fee2e2; color: #dc2626; }
+.badge-active { background: #dbeafe; color: #1569b8; }
+
+/* Detail Modal */
+.progress-detail-modal {
+  max-width: 680px;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.progress-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.progress-detail-header h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+.progress-detail-meta {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+.modal-close-btn { padding: 0.2rem 0.6rem; flex-shrink: 0; }
+
+.progress-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 1rem;
+}
+.progress-stat { text-align: center; }
+.progress-stat-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1569b8;
+  margin-bottom: 0.2rem;
+}
+.progress-stat-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.progress-questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.progress-question-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.875rem;
+}
+.progress-q-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+.progress-q-num {
+  font-weight: 700;
+  color: #1569b8;
+  font-size: 0.875rem;
+}
+.progress-q-topic {
+  font-size: 0.75rem;
+  background: #dbeafe;
+  color: #1569b8;
+  padding: 0.1rem 0.45rem;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.progress-q-score {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #374151;
+}
+.progress-q-text {
+  font-size: 0.875rem;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+.progress-q-answer {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-bottom: 0.35rem;
+}
+.progress-q-feedback {
+  font-size: 0.8rem;
+  color: #374151;
+  background: #f9fafb;
+  border-left: 3px solid #2ec87e;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 0.25rem;
+}
+.progress-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+}
+.pagination-info {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.progress-q-missed {
+  font-size: 0.8rem;
+  color: #dc2626;
+  background: #fef2f2;
+  border-left: 3px solid #fca5a5;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0 6px 6px 0;
+}
+
+/* ── Main Admin Tabs ── */
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+.admin-tab-btn {
+  padding: 0.65rem 1.4rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.admin-tab-btn:hover { color: #1569b8; }
+.admin-tab-btn--active {
+  color: #1569b8;
+  border-bottom-color: #1569b8;
+}
+.admin-tab-panel {
+  animation: tabFadeIn 0.15s ease;
+}
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Upload Mode Tabs ── */
+.upload-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.upload-tab-btn {
+  padding: 0.45rem 1.1rem;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.upload-tab-btn:hover { border-color: #1569b8; color: #1569b8; }
+.upload-tab-btn--active {
+  background: #1569b8;
+  border-color: #1569b8;
+  color: white;
+}
+
+/* ── Drag & Drop Zone ── */
+.drop-zone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: #f8fafc;
+  margin-bottom: 1rem;
+  user-select: none;
+}
+.drop-zone:hover,
+.drop-zone--active {
+  border-color: #1569b8;
+  background: #eff6ff;
+}
+.drop-zone-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+.drop-zone-label { font-size: 0.9rem; color: #374151; margin: 0 0 0.25rem; }
+.drop-zone-hint { font-size: 0.775rem; color: #9ca3af; margin: 0; }
+
+/* ── Bulk File List ── */
+.bulk-file-list {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.bulk-file-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.875rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+}
+.bulk-file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.875rem;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.8125rem;
+}
+.bulk-file-item:last-child { border-bottom: none; }
+.bulk-file-icon { flex-shrink: 0; }
+.bulk-file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1f2937;
+}
+.bulk-file-size { color: #9ca3af; flex-shrink: 0; }
+.bulk-file-remove {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.bulk-file-remove:hover { color: #dc2626; }
+
+/* ── Bulk Results Table ── */
+.bulk-results { margin-bottom: 1.25rem; }
+.bulk-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  margin-top: 0.75rem;
+}
+.bulk-results-table th {
+  background: #f9fafb;
+  padding: 0.45rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+.bulk-results-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+.bulk-results-table tr:last-child td { border-bottom: none; }
+.bulk-results-table tr.row-success td { background: #f0fdf4; }
+.bulk-results-table tr.row-error td { background: #fff7f7; }
+.bulk-results-table tr.row-pending td { background: #fafafa; color: #888; }
+.bulk-processing-indicator { font-style: italic; }
+.bulk-file-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #374151;
+}
+.status-badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.status-badge--success { color: #16a34a; }
+.status-badge--error { color: #dc2626; }
+.warning-inline { font-weight: 400; color: #d97706; font-size: 0.775rem; }
+
 /* ── Responsive Admin ── */
 @media (max-width: 768px) {
   .upload-form .form-row { grid-template-columns: 1fr; }
@@ -419,4 +820,126 @@
   .admin-login-card { padding: 1.75rem 1.25rem; }
   .settings-main { max-width: 100%; }
   .settings-card { padding: 1.25rem 1rem; }
+  .progress-detail-summary { grid-template-columns: repeat(2, 1fr); }
+  .progress-detail-modal { max-height: 90vh; }
+  .progress-filters { flex-direction: column; }
+  .progress-search { min-width: 0; }
+}
+
+/* ── Chapter Inline Rename ── */
+.chapter-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.rename-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #64748b;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+}
+.rename-btn:hover {
+  opacity: 1;
+  background: #e2e8f0;
+}
+.rename-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.rename-input {
+  width: 100%;
+  min-width: 180px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.875rem;
+  border: 1.5px solid #1569b8;
+  border-radius: 6px;
+  outline: none;
+}
+.rename-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.rename-error {
+  font-size: 0.78rem;
+  color: #dc2626;
+}
+
+/* ── Chapter name clickable link ── */
+.chapter-name-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: #1569b8;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-align: left;
+}
+.chapter-name-link:hover {
+  color: #0f4f8c;
+}
+
+/* ── PDF Modal ── */
+.pdf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.pdf-modal {
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  width: 90vw;
+  height: 90vh;
+  max-width: 1100px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+.pdf-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.pdf-modal-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0 0.25rem;
+  flex-shrink: 0;
+}
+.pdf-modal-close:hover {
+  color: #1e293b;
+}
+.pdf-modal-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
 }

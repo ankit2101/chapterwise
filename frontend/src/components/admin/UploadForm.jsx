@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { uploadChapter } from '../../api/adminApi';
+import { SUBJECTS } from '../../constants/subjects';
 
 const BOARDS = ['CBSE', 'ICSE'];
 const GRADES = [6, 7, 8, 9, 10];
@@ -20,7 +21,7 @@ export default function UploadForm({ onUploadSuccess }) {
     setError('');
     setResult(null);
 
-    if (!board || !grade || !subject.trim() || !chapterName.trim() || !file) {
+    if (!board || !grade || !subject || !chapterName.trim() || !file) {
       setError('Please fill in all fields and select a PDF file.');
       return;
     }
@@ -28,7 +29,7 @@ export default function UploadForm({ onUploadSuccess }) {
     const formData = new FormData();
     formData.append('board', board);
     formData.append('grade', grade);
-    formData.append('subject', subject.trim());
+    formData.append('subject', subject);
     formData.append('chapter_name', chapterName.trim());
     formData.append('pdf_file', file);
 
@@ -88,14 +89,14 @@ export default function UploadForm({ onUploadSuccess }) {
 
         <div className="form-group">
           <label htmlFor="upload-subject">Subject</label>
-          <input
+          <select
             id="upload-subject"
-            type="text"
             value={subject}
             onChange={e => setSubject(e.target.value)}
-            placeholder="e.g. Science, Mathematics, English"
-            maxLength={100}
-          />
+          >
+            <option value="">Select Subject</option>
+            {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
 
         <div className="form-group">

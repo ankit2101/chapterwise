@@ -16,6 +16,18 @@ def _get_api_key():
     return current_app.config.get('ANTHROPIC_API_KEY', '')
 
 
+def _get_model():
+    """Resolve model: admin-configured setting takes precedence over config default."""
+    try:
+        from models import AppSettings
+        setting = AppSettings.query.filter_by(key='claude_model').first()
+        if setting and setting.value and setting.value.strip():
+            return setting.value.strip()
+    except Exception:
+        pass
+    return current_app.config.get('CLAUDE_MODEL', 'claude-haiku-4-5-20251001')
+
+
 def _get_client():
     api_key = _get_api_key()
     if not api_key:
@@ -133,7 +145,7 @@ def generate_questions(chapter_text: str, chapter_name: str,
     )
 
     message = client.messages.create(
-        model=current_app.config['CLAUDE_MODEL'],
+        model=_get_model(),
         max_tokens=8192,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -203,7 +215,7 @@ def evaluate_answer(question_text: str, key_points: list,
     )
 
     message = client.messages.create(
-        model=current_app.config['CLAUDE_MODEL'],
+        model=_get_model(),
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -224,6 +236,80 @@ def evaluate_answer(question_text: str, key_points: list,
         result['max_score'] = 1
 
     return result
+
+
+# ─────────────────────────────────────────────────────────────
+# Hint Generation
+# ─────────────────────────────────────────────────────────────
+
+HINT_PROMPT = """You are a warm and encouraging teacher helping a Grade {grade} student who is stuck during a test.
+
+QUESTION:
+{question_text}
+
+MARKS: {marks} mark(s)
+
+TOPIC: {topic_tag}
+
+KEY POINTS (DO NOT reveal these directly — use them only to shape your hint):
+{key_points_formatted}
+
+STUDENT'S CURRENT PARTIAL ANSWER:
+"{partial_answer}"
+
+PREVIOUS ANSWERS BY THIS STUDENT ON THE SAME TOPIC:
+{previous_answers_text}
+
+TASK:
+Write a short, gentle hint to nudge the student in the right direction.
+
+RULES:
+1. NEVER reveal a key point word-for-word. Guide, don't give away.
+2. If the student has written something, acknowledge it and point toward what is still missing.
+3. If they have answered related questions on the same topic, connect to that knowledge.
+4. Use phrases like "Think about...", "Remember...", "Consider...", "What did we learn about..."
+5. Keep it to 1–2 sentences only. Warm, simple language for a Grade {grade} student.
+6. Return ONLY the hint as plain text — no JSON, no bullet points, no markdown."""
+
+
+def generate_hint(question_text: str, key_points: list, marks: int,
+                  topic_tag: str, partial_answer: str,
+                  related_previous_answers: list, grade: int) -> str:
+    """
+    Generate a gentle nudge hint for a student who is stuck.
+    Returns hint as a plain string.
+    """
+    client = _get_client()
+
+    key_points_formatted = '\n'.join(f"- {p}" for p in key_points)
+
+    if related_previous_answers:
+        prev_text = '\n'.join(
+            f"- Q: {a['question_text']}\n  A: {a['student_answer']}"
+            for a in related_previous_answers[:3]
+        )
+    else:
+        prev_text = "None yet."
+
+    partial = partial_answer.strip() if partial_answer else "(Student has not written anything yet)"
+
+    prompt = HINT_PROMPT.format(
+        grade=grade,
+        question_text=question_text,
+        marks=marks,
+        topic_tag=topic_tag or 'this topic',
+        key_points_formatted=key_points_formatted,
+        partial_answer=partial,
+        previous_answers_text=prev_text,
+    )
+
+    message = client.messages.create(
+        model=_get_model(),
+        max_tokens=200,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return message.content[0].text.strip()
 
 
 # ─────────────────────────────────────────────────────────────

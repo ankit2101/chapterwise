@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import db, Chapter, TestSession, Student
 from services import claude_service
 import json
+import random
 import bcrypt
 from datetime import datetime, timedelta
 
@@ -35,11 +36,11 @@ def student_login():
     student = Student.query.filter_by(name_lower=name_lower).first()
 
     if not student:
-        return jsonify({'error': 'Name not found. Ask your teacher to create your account.'}), 404
+        return jsonify({'error': 'Invalid name or PIN. If you are new, ask your teacher to create your account.'}), 401
 
     # Verify PIN
     if not bcrypt.checkpw(pin.encode('utf-8'), student.pin_hash.encode('utf-8')):
-        return jsonify({'error': 'Incorrect PIN. Try again.'}), 401
+        return jsonify({'error': 'Invalid name or PIN. If you are new, ask your teacher to create your account.'}), 401
 
     # Expire stale sessions
     _expire_old_sessions(student.id)
@@ -73,6 +74,59 @@ def student_login():
         }
 
     return jsonify(response)
+
+
+@student_bp.route('/api/hint', methods=['POST'])
+def get_hint():
+    """Generate a context-aware hint for the current question."""
+    data = request.get_json() or {}
+    session_key = data.get('session_key', '').strip()
+    partial_answer = data.get('answer_text', '').strip()
+
+    if not session_key:
+        return jsonify({'error': 'session_key required'}), 400
+
+    session = TestSession.query.filter_by(session_key=session_key).first()
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+    if session.status != 'active':
+        return jsonify({'error': 'Session is not active'}), 400
+
+    questions = json.loads(session.questions_json)
+    idx = session.current_question_index
+    if idx >= len(questions):
+        return jsonify({'error': 'No current question'}), 400
+
+    current_q = questions[idx]
+    chapter = session.chapter
+
+    # Collect previous answers on the same topic to give context-aware hints
+    topic_tag = current_q.get('topic_tag', '')
+    past_answers = json.loads(session.answers_json)
+    related_previous = [
+        {
+            'question_text': a['question_text'],
+            'student_answer': a['student_answer'],
+        }
+        for a in past_answers
+        if topic_tag and a.get('topic_tag') == topic_tag and a.get('student_answer')
+    ]
+
+    try:
+        hint = claude_service.generate_hint(
+            question_text=current_q['question_text'],
+            key_points=current_q['key_points'],
+            marks=current_q.get('marks', 1),
+            topic_tag=topic_tag,
+            partial_answer=partial_answer,
+            related_previous_answers=related_previous,
+            grade=chapter.grade,
+        )
+        return jsonify({'hint': hint})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': f'Could not generate hint: {str(e)}'}), 500
 
 
 @student_bp.route('/api/student/session-ping', methods=['POST'])
@@ -190,6 +244,13 @@ def start_test():
             return jsonify({'error': str(e)}), 500
         except Exception as e:
             return jsonify({'error': f'Could not generate questions: {str(e)}'}), 500
+
+    # Shuffle questions for every new test attempt
+    questions = list(questions)
+    random.shuffle(questions)
+    # Re-number after shuffle so question_number matches display order
+    for i, q in enumerate(questions):
+        q['question_number'] = i + 1
 
     student_id = data.get('student_id')
 

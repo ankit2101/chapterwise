@@ -10,6 +10,7 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 - **Student login** — Students log in with a name and 4-digit PIN assigned by their teacher (no self-registration)
 - **Session management** — 30-minute inactivity timeout with automatic session expiry; active sessions resume on re-login
 - **Cascading selection** — Board (CBSE / ICSE) → Grade → Subject → Chapter, all populated from uploaded PDFs
+- **Predefined subject list** — Subjects are selected from a fixed dropdown (Maths, Physics, Chemistry, Biology, History, Civics, Geography, Hindi, English) ensuring consistent naming
 - **CBSE-pattern question paper** — Three sections per chapter, scaled to chapter size:
   - **Section A** — 10–15 one-mark questions (definitions, single facts, one-liners)
   - **Section B** — 5–10 three-mark questions (brief explanations, 3 key points)
@@ -18,15 +19,23 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 - **Full-topic coverage** — Questions are scaled to chapter size (simple / medium / large) and distributed across every section of the chapter
 - **Voice answers** — Speak your answer; the browser transcribes it in real time using the Web Speech API
 - **Text-to-Speech** — Each question is read aloud automatically; a replay button is always available
+- **Shuffled questions** — Question order is randomised on every new test attempt so no two attempts are identical
 - **AI evaluation** — Claude checks whether the student covered the key points (lenient on grammar, sequence, and phrasing)
 - **Encouraging feedback** — Points covered shown in green; missed points shown in amber with a gentle reminder
 - **Test summary** — Total score, percentage, section-wise breakdown (Section A / B / C), missed topics, and a per-question breakdown at the end
 
 ### Admin Panel
+- **Tabbed dashboard** — Four tabs for clean navigation: Upload, Content, Students, Progress
 - **Student management** — Create student accounts with name + 4-digit PIN, reset PINs, and delete students from the dashboard
-- **PDF upload** — Attach a board, grade, subject, and chapter name to any PDF
+- **Single PDF upload** — Attach a board, grade, subject (dropdown), and chapter name to any PDF
+- **Bulk PDF upload** — Upload multiple PDFs at once; files are processed sequentially with live per-file progress; chapter names are auto-extracted from the first page of each PDF
+- **Duplicate chapter handling** — If a chapter name already exists within the same board/grade/subject, a numeric suffix is appended automatically (e.g. `Chapter 1 (2)`)
+- **Chapter rename** — Rename any chapter inline from the Uploaded Content table; duplicate names within the same board/grade/subject are rejected
+- **PDF viewer** — Click any chapter name to open the original PDF in a full-screen modal viewer
 - **Content management** — View, organise, and delete uploaded chapters
+- **Student progress** — View every student's test attempts, scores, time taken, and per-question breakdown in a searchable, paginated table
 - **Question cache** — Questions are generated once and cached; a "Refresh Questions" button forces regeneration
+- **AI model selection** — Switch between Claude Haiku (fast & economical) and Claude Sonnet (more capable) from the Settings page — no server restart needed
 - **API key management** — Enter the Anthropic API key directly in the UI (no server restarts needed)
 - **Password change** — Update the admin password from the settings page
 - **Secure by default** — bcrypt-hashed passwords, session-based authentication
@@ -43,19 +52,21 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.9+, Flask 3.0, SQLAlchemy, SQLite |
-| AI | Anthropic Claude API (`claude-sonnet-4-6`) |
-| PDF Extraction | pdfplumber |
-| Frontend | React 18, Vite, React Router v6 |
+| AI | Anthropic Claude API (Haiku & Sonnet; selectable per deployment) |
+| PDF Extraction | pdftotext (poppler) → pypdf → pdfplumber (3-strategy cascade) |
+| Frontend | React 19, Vite, React Router v7 |
 | Voice Input | Browser Web Speech API (`en-IN`) |
 | Text-to-Speech | Browser `speechSynthesis` API |
 | Auth | bcrypt, Flask sessions, PIN-based student login |
+| Web Server | nginx (production) with TLS 1.2/1.3, rate limiting, HSTS |
 
 ---
 
 ## Prerequisites
 
 - **Python 3.9+**
-- **Node.js 18+** and **npm**
+- **Node.js 18+** and **npm 10+**
+- **poppler-utils** (for `pdftotext`) — `sudo apt install poppler-utils` on Ubuntu / `brew install poppler` on macOS
 - An **Anthropic API key** — get one at [console.anthropic.com](https://console.anthropic.com)
 
 ---
@@ -99,10 +110,6 @@ SECRET_KEY=chapterwise-secret-change-in-prod-2024
 > The `SECRET_KEY` secures Flask session cookies. Any long random string works for local use. For production, generate one with `python3 -c "import secrets; print(secrets.token_hex(32))"`.
 
 > The `ANTHROPIC_API_KEY` set through the Admin Panel takes precedence over the `.env` value.
-
-### 5. Add the logo image
-
-Save the ChapterWise logo as `static/logo.png` (served immediately by Flask) and also as `frontend/public/logo.png` (included in future frontend builds).
 
 ---
 
@@ -159,13 +166,15 @@ A convenience script starts the server and opens the browser automatically:
    - **Username:** `admin`
    - **Password:** `admin123`
 3. Go to **Settings** → paste your Anthropic API key → click **Save API Key**
-4. Go to **Dashboard** → **Student Management** section → create student accounts:
+4. (Optional) In **Settings → AI Model**, choose between **Claude Haiku** (faster, cheaper) and **Claude Sonnet** (richer questions, deeper feedback) → click **Save Model**
+5. Go to **Dashboard → Students tab** → create student accounts:
    - Enter a student name and a 4-digit PIN
    - Share the name and PIN with the student (students cannot self-register)
-5. Upload your first PDF:
-   - Select Board, Grade, Subject, and enter a Chapter Name
-   - Upload the PDF (up to 32 MB)
-6. The app extracts text automatically. Chapters with very little text (scanned/image PDFs) will show a warning.
+6. Upload your first PDF(s) from the **Upload tab**:
+   - **Single upload** — Select Board, Grade, Subject (dropdown), enter a Chapter Name, and upload one PDF
+   - **Bulk upload** — Select Board, Grade, Subject, then drag-and-drop multiple PDFs; chapter names are extracted automatically from each PDF's first page. After upload, use the ✏ button to rename any chapter directly in the results table.
+7. The app extracts text automatically. Chapters with very little text (scanned/image PDFs) will show a warning.
+8. Click any chapter name in the **Content tab** to preview the original PDF in a modal viewer, or click ✏ to rename it.
 
 > **Change the default password** immediately after first login via Settings → Change Password.
 
@@ -177,7 +186,7 @@ A convenience script starts the server and opens the browser automatically:
 Admin creates student accounts (name + 4-digit PIN)
 Admin uploads PDF
         ↓
-Text extracted by pdfplumber
+Text extracted: pdftotext → pypdf → pdfplumber (cascade)
         ↓
 Student logs in with name + PIN
         ↓
@@ -231,29 +240,33 @@ chapterwise/
 ├── routes/
 │   ├── student.py          # /api/student/login, /api/grades, /api/subjects, /api/chapters,
 │   │                       # /api/start-test, /api/submit-answer, /api/session/<key>
-│   └── admin.py            # /api/admin/* (login, upload, delete, password, API key, students)
+│   └── admin.py            # /api/admin/* (login, upload, bulk-upload, chapter/pdf, chapter/rename,
+│                           #               delete, password, API key, model config, students, student-progress)
 │
 ├── services/
-│   ├── pdf_service.py      # pdfplumber text extraction + cleaning
+│   ├── pdf_service.py      # 3-strategy PDF extraction: pdftotext → pypdf → pdfplumber
 │   └── claude_service.py   # Question generation (3 sections) + answer evaluation prompts
 │
 ├── frontend/
 │   ├── vite.config.js      # Dev proxy (/api → :5000), build output → ../static/
 │   └── src/
 │       ├── App.jsx          # React Router route definitions
+│       ├── constants/
+│       │   └── subjects.js  # Shared predefined subject list
 │       ├── context/         # AdminAuthContext, StudentAuthContext (login state)
-│       ├── api/             # studentApi.js, adminApi.js (fetch wrappers)
+│       ├── api/             # studentApi.js, adminApi.js (fetch wrappers with error handling)
 │       ├── hooks/           # useSpeechRecognition.js, useTextToSpeech.js
 │       ├── components/
 │       │   ├── student/     # StudentLogin, SelectionPage, TestPage,
 │       │   │                # QuestionCard, VoiceInput, FeedbackCard, SummaryPage
-│       │   ├── admin/       # AdminLogin, AdminDashboard, UploadForm,
-│       │   │                # ChapterTable, AdminSettings, StudentManagement
+│       │   ├── admin/       # AdminLogin, AdminDashboard (tabbed), UploadForm, BulkUploadForm,
+│       │   │                # ChapterTable (with PDF viewer + rename), AdminSettings,
+│       │   │                # StudentManagement, StudentProgress
 │       │   └── shared/      # LoadingOverlay, Toast, ProtectedRoute,
 │       │                    # StudentProtectedRoute, Logo
 │       └── styles/          # student.css, admin.css
 │
-├── static/                 # Built React output + logo.png (logo.png not gitignored)
+├── static/                 # Built React output (gitignored; regenerated by npm run build)
 ├── uploads/pdfs/           # Uploaded chapter PDFs (gitignored)
 └── chapterwise.db          # SQLite database (gitignored, auto-created on first run)
 ```
@@ -266,7 +279,7 @@ chapterwise/
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `SECRET_KEY` | Recommended | `chapterwise-secret-change-in-prod-2024` | Flask session secret. Change to a random string before deploying. |
+| `SECRET_KEY` | **Required** | *(none — app will not start without it)* | Flask session secret. Generate with `python3 -c "import secrets; print(secrets.token_hex(32))"`. |
 | `ANTHROPIC_API_KEY` | Optional | *(none)* | Fallback Anthropic API key. Can be set via Admin Panel → Settings instead. |
 
 Generate a secure secret key:
@@ -278,14 +291,13 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 | Setting | Value | Description |
 |---|---|---|
-| `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Claude model used for question generation and evaluation |
+| `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Default Claude model (fallback if not set via Admin Panel) |
+| `AVAILABLE_MODELS` | Haiku, Sonnet | Models selectable from Admin Panel → Settings → AI Model |
 | `MAX_CONTENT_LENGTH` | `32 MB` | Maximum PDF upload size |
 | `SQLALCHEMY_DATABASE_URI` | `sqlite:///chapterwise.db` | SQLite database in the project root |
 | `UPLOAD_FOLDER` | `uploads/pdfs/` | Directory where uploaded PDFs are stored |
 | `DEFAULT_ADMIN_USERNAME` | `admin` | Initial admin username (change via Admin Panel) |
 | `DEFAULT_ADMIN_PASSWORD` | `admin123` | Initial admin password (change immediately after first login) |
-
-These settings live in `config.py` and can be overridden via environment variables where applicable.
 
 ---
 
@@ -311,15 +323,41 @@ These settings live in `config.py` and can be overridden via environment variabl
 | `POST` | `/api/admin/login` | Authenticate admin |
 | `POST` | `/api/admin/logout` | Clear session |
 | `GET` | `/api/admin/content` | All chapters grouped by board/grade/subject |
-| `POST` | `/api/admin/upload` | Upload PDF + metadata |
+| `POST` | `/api/admin/upload` | Upload a single PDF + metadata |
+| `POST` | `/api/admin/bulk-upload` | Upload multiple PDFs; chapter names auto-extracted from first page |
+| `GET` | `/api/admin/chapter/<id>/pdf` | Serve chapter PDF inline (used by the PDF modal viewer) |
+| `PATCH` | `/api/admin/chapter/<id>/rename` | Rename a chapter (duplicate-safe within board/grade/subject) |
 | `DELETE` | `/api/admin/chapter/<id>` | Delete chapter and PDF file |
 | `POST` | `/api/admin/change-password` | Update admin password |
 | `POST` | `/api/admin/save-api-key` | Store Anthropic API key |
 | `GET` | `/api/admin/api-key-status` | Check if API key is configured |
+| `GET` | `/api/admin/model-config` | Get available models and currently active model |
+| `POST` | `/api/admin/save-model` | Switch the active Claude model |
 | `GET` | `/api/admin/students` | List all students with session counts |
 | `POST` | `/api/admin/students` | Create a new student (name + PIN) |
 | `DELETE` | `/api/admin/students/<id>` | Delete a student account |
 | `POST` | `/api/admin/students/<id>/reset-pin` | Reset a student's PIN |
+| `GET` | `/api/admin/student-progress` | All test sessions with scores, time, and per-question breakdown |
+
+---
+
+## Security
+
+The production deployment is hardened with the following controls:
+
+| Control | Detail |
+|---|---|
+| TLS | TLS 1.2 and 1.3 only; TLS 1.0/1.1 rejected |
+| HSTS | `max-age=31536000; includeSubDomains` |
+| Security headers | `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy` |
+| Login rate limiting | 5 requests/minute (burst 2) on both `/api/admin/login` and `/api/student/login` |
+| API rate limiting | 30 requests/minute on all other `/api/` endpoints |
+| Rate limit response | `429` with `Retry-After: 60` header and JSON body (not nginx HTML) |
+| Username enumeration | Student login returns identical error for wrong name and wrong PIN |
+| bcrypt | All passwords and PINs stored as bcrypt hashes |
+| Session auth | All admin endpoints require a valid session cookie |
+| HTTP redirect | Bare IP HTTP access redirects to HTTPS hostname |
+| nginx version | Hidden (`server_tokens off`) |
 
 ---
 
@@ -327,8 +365,10 @@ These settings live in `config.py` and can be overridden via environment variabl
 
 - **Voice input** requires **Google Chrome** (or another Chromium-based browser). Firefox and Safari do not support the Web Speech API. Students on unsupported browsers can type their answers instead.
 - **Image-based PDFs** (scanned documents) will extract very little text. The admin dashboard shows a warning for these files, and tests cannot be started until sufficient text is available.
-- **Question caching** — questions for a chapter are generated once and stored in the database. Use the **Refresh Q** button in the admin dashboard to regenerate them (e.g., after re-uploading a better PDF). Caching must be cleared manually if the question format changes.
-- The app is designed for **local / classroom use**. For internet-facing deployment, set a strong `SECRET_KEY`, use HTTPS, and consider adding rate limiting.
+- **PDF extraction** uses a 3-strategy cascade: `pdftotext` (poppler C binary, fastest) → `pypdf` → `pdfplumber`. This ensures reliable extraction even for complex or large PDFs that cause Python-based parsers to hang.
+- **Question caching** — questions for a chapter are generated once and stored in the database. Use the **Refresh Q** button in the admin dashboard to regenerate them (e.g., after re-uploading a better PDF).
+- **Model selection** — switching the Claude model (Haiku ↔ Sonnet) takes effect immediately for all new question generation and answer evaluation; no server restart is required.
+- **Bulk upload** — files are uploaded one at a time sequentially to avoid timeouts on large PDFs. A live progress indicator shows which file is being processed.
 
 ---
 

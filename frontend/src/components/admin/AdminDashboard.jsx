@@ -3,15 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { getContent } from '../../api/adminApi';
 import UploadForm from './UploadForm';
+import BulkUploadForm from './BulkUploadForm';
 import Logo from '../shared/Logo';
 import ChapterTable from './ChapterTable';
 import StudentManagement from './StudentManagement';
+import StudentProgress from './StudentProgress';
 import LoadingOverlay from '../shared/LoadingOverlay';
+
+const TABS = [
+  { id: 'upload',   label: 'Upload' },
+  { id: 'content',  label: 'Content' },
+  { id: 'students', label: 'Students' },
+  { id: 'progress', label: 'Progress' },
+];
 
 export default function AdminDashboard() {
   const [content, setContent] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('upload');
+  const [uploadMode, setUploadMode] = useState('single'); // 'single' | 'bulk'
   const { username, logout } = useAdminAuth();
   const navigate = useNavigate();
 
@@ -73,23 +84,77 @@ export default function AdminDashboard() {
 
         {error && <div className="alert alert-error">{error}</div>}
 
-        <UploadForm onUploadSuccess={loadContent} />
-
-        <div className="content-section">
-          <div className="section-header">
-            <h2>Uploaded Content</h2>
-            <button className="btn btn-sm btn-outline" onClick={loadContent} disabled={loading}>
-              {loading ? 'Loading...' : 'Refresh'}
+        {/* Main tab bar */}
+        <div className="admin-tabs">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              className={`admin-tab-btn ${activeTab === tab.id ? 'admin-tab-btn--active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
             </button>
-          </div>
-          {loading
-            ? <LoadingOverlay message="Loading content..." />
-            : <ChapterTable content={content} onRefresh={loadContent} />}
+          ))}
         </div>
 
-        <div className="content-section">
-          <StudentManagement />
-        </div>
+        {/* Tab: Upload */}
+        {activeTab === 'upload' && (
+          <div className="admin-tab-panel">
+            <div className="upload-tabs">
+              <button
+                className={`upload-tab-btn ${uploadMode === 'single' ? 'upload-tab-btn--active' : ''}`}
+                onClick={() => setUploadMode('single')}
+              >
+                Single Upload
+              </button>
+              <button
+                className={`upload-tab-btn ${uploadMode === 'bulk' ? 'upload-tab-btn--active' : ''}`}
+                onClick={() => setUploadMode('bulk')}
+              >
+                Bulk Upload
+              </button>
+            </div>
+            {uploadMode === 'single'
+              ? <UploadForm onUploadSuccess={loadContent} />
+              : <BulkUploadForm onUploadSuccess={loadContent} />
+            }
+          </div>
+        )}
+
+        {/* Tab: Content */}
+        {activeTab === 'content' && (
+          <div className="admin-tab-panel">
+            <div className="content-section">
+              <div className="section-header">
+                <h2>Uploaded Content</h2>
+                <button className="btn btn-sm btn-outline" onClick={loadContent} disabled={loading}>
+                  {loading ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
+              {loading
+                ? <LoadingOverlay message="Loading content..." />
+                : <ChapterTable content={content} onRefresh={loadContent} />}
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Students */}
+        {activeTab === 'students' && (
+          <div className="admin-tab-panel">
+            <div className="content-section">
+              <StudentManagement />
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Progress */}
+        {activeTab === 'progress' && (
+          <div className="admin-tab-panel">
+            <div className="content-section">
+              <StudentProgress />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

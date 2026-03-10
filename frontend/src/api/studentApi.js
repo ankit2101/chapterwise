@@ -61,6 +61,15 @@ export async function studentLogin(name, pin) {
   return handleResponse(res);
 }
 
+export async function requestHint(sessionKey, answerText = '') {
+  const res = await fetch(`${BASE}/hint`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_key: sessionKey, answer_text: answerText }),
+  });
+  return handleResponse(res);
+}
+
 export async function sessionPing(sessionKey) {
   const res = await fetch(`${BASE}/student/session-ping`, {
     method: 'POST',
