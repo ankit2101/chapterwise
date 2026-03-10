@@ -66,7 +66,7 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 ## Prerequisites
 
 - **Python 3.9+**
-- **Node.js 18+** and **npm 10+**
+- **Node.js 20+** and **npm 10+**
 - **poppler-utils** (for `pdftotext`) — `sudo apt install poppler-utils` on Ubuntu / `brew install poppler` on macOS
 - An **Anthropic API key** — get one at [console.anthropic.com](https://console.anthropic.com)
 
@@ -340,7 +340,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `GET` | `/api/chapters?board=CBSE&grade=8&subject=Science` | Chapters for board + grade + subject |
 | `POST` | `/api/start-test` | Create session, generate & validate questions, return first question |
 | `POST` | `/api/submit-answer` | Evaluate answer, return feedback + next question or summary |
-| `POST` | `/api/hint` | Generate a context-aware hint for the current question (uses student's prior answers on same topic) |
+| `POST` | `/api/student/hint` | Generate a context-aware hint for the current question (uses student's prior answers on same topic; max 30 hints per session) |
 | `GET` | `/api/session/<key>` | Restore session state (used on page refresh) |
 
 ### Admin Endpoints (require session cookie)
@@ -393,10 +393,10 @@ The production deployment is hardened with the following controls:
 
 - **Voice input** requires **Google Chrome** (or another Chromium-based browser). Firefox and Safari do not support the Web Speech API. Students on unsupported browsers can type their answers instead.
 - **Image-based PDFs** (scanned documents) will extract very little text. The admin dashboard shows a warning for these files, and tests cannot be started until sufficient text is available.
-- **PDF extraction** uses a 3-strategy cascade: `pdftotext` (poppler C binary, fastest) → `pypdf` → `pdfplumber`. This ensures reliable extraction even for complex or large PDFs that cause Python-based parsers to hang.
+- **PDF extraction** uses a 3-strategy cascade: `pdftotext` (poppler C binary, fastest) → `pypdf` → `pdfplumber`. This ensures reliable extraction even for complex or large PDFs that cause Python-based parsers to hang. The `pdftotext` binary path is resolved automatically via `shutil.which()` so it works on both macOS (Homebrew) and Linux without hardcoding.
 - **Question caching** — questions for a chapter are generated, validated by the LLM-as-judge loop, and then stored in the database. Use the **Refresh Q** button in the admin dashboard to fully regenerate and re-validate them (e.g., after re-uploading a better PDF). The validation cost (up to 3 judge/fixer API calls) is incurred only once per chapter since the result is immediately cached.
 - **Hints** — each hint call is a lightweight Claude request (max 200 tokens). Hints are context-aware: Claude receives the student's previous answers on the same `topic_tag` (up to 3) so it can connect the nudge to knowledge the student has already demonstrated. Hints never reveal key points word-for-word.
-- **Model selection** — switching the Claude model (Haiku ↔ Sonnet) takes effect immediately for all new question generation, validation, answer evaluation, and hint generation; no server restart is required.
+- **Model selection** — switching the Claude model (Haiku ↔ Sonnet) takes effect immediately for all new question generation, validation, answer evaluation, and hint generation; no server restart is required. The active model is cached in memory for 60 seconds to avoid a database round-trip on every Claude call; the cache is invalidated instantly when you save a new model via the Admin Panel.
 - **Bulk upload** — files are uploaded one at a time sequentially to avoid timeouts on large PDFs. A live progress indicator shows which file is being processed.
 
 ---
