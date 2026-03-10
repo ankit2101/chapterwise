@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "flask-backend",
-      "runtimeExecutable": "/Users/ankiagar/Downloads/ClaudeCode/VaanyaTest/venv/bin/python",
-      "runtimeArgs": ["app.py"],
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["/Users/ankiagar/Downloads/ClaudeCode/VaanyaTest/run_flask.sh"],
       "cwd": "/Users/ankiagar/Downloads/ClaudeCode/VaanyaTest",
       "port": 5000
     },
