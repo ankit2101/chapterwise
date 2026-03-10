@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flask-backend",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["/Users/ankiagar/Downloads/ClaudeCode/VaanyaTest/run_flask.sh"],
+      "cwd": "/Users/ankiagar/Downloads/ClaudeCode/VaanyaTest",
+      "port": 5000
+    },
+    {
+      "name": "vite-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/ankiagar/Downloads/ClaudeCode/VaanyaTest/frontend",
+      "port": 5173
+    }
+  ]
+}

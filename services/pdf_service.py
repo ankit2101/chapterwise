@@ -5,7 +5,7 @@ import pypdf
 import re
 
 # Resolve pdftotext binary path once at import time (handles macOS Homebrew paths)
-_PDFTOTEXT = shutil.which('pdftotext') or _PDFTOTEXT
+_PDFTOTEXT = shutil.which('pdftotext') or '/usr/bin/pdftotext'
 
 
 def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
