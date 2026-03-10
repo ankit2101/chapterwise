@@ -62,7 +62,7 @@ export async function studentLogin(name, pin) {
 }
 
 export async function requestHint(sessionKey, answerText = '') {
-  const res = await fetch(`${BASE}/hint`, {
+  const res = await fetch(`${BASE}/student/hint`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_key: sessionKey, answer_text: answerText }),

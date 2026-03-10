@@ -76,7 +76,10 @@ def student_login():
     return jsonify(response)
 
 
-@student_bp.route('/api/hint', methods=['POST'])
+MAX_HINTS_PER_SESSION = 30
+
+
+@student_bp.route('/api/student/hint', methods=['POST'])
 def get_hint():
     """Generate a context-aware hint for the current question."""
     data = request.get_json() or {}
@@ -92,7 +95,12 @@ def get_hint():
     if session.status != 'active':
         return jsonify({'error': 'Session is not active'}), 400
 
-    questions = json.loads(session.questions_json)
+    # Rate-limit: cap hints per session to prevent API abuse
+    hints_used = session.hints_used if hasattr(session, 'hints_used') and session.hints_used else 0
+    if hints_used >= MAX_HINTS_PER_SESSION:
+        return jsonify({'error': 'Hint limit reached for this session'}), 429
+
+    questions = json.loads(session.questions_json or '[]')
     idx = session.current_question_index
     if idx >= len(questions):
         return jsonify({'error': 'No current question'}), 400

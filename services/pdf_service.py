@@ -1,7 +1,11 @@
 import subprocess
+import shutil
 import pdfplumber
 import pypdf
 import re
+
+# Resolve pdftotext binary path once at import time (handles macOS Homebrew paths)
+_PDFTOTEXT = shutil.which('pdftotext') or _PDFTOTEXT
 
 
 def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
@@ -16,7 +20,7 @@ def extract_text(pdf_path: str, max_chars: int = 100_000) -> str:
     # --- Strategy 1: pdftotext (fastest) ---
     try:
         result = subprocess.run(
-            ['/usr/bin/pdftotext', '-layout', '-enc', 'UTF-8', pdf_path, '-'],
+            [_PDFTOTEXT, '-layout', '-enc', 'UTF-8', pdf_path, '-'],
             capture_output=True,
             text=True,
             timeout=30,
@@ -91,7 +95,7 @@ def extract_chapter_name(pdf_path: str) -> str:
     # --- Try pdftotext first page ---
     try:
         result = subprocess.run(
-            ['/usr/bin/pdftotext', '-f', '1', '-l', '1', '-enc', 'UTF-8', pdf_path, '-'],
+            [_PDFTOTEXT, '-f', '1', '-l', '1', '-enc', 'UTF-8', pdf_path, '-'],
             capture_output=True,
             text=True,
             timeout=15,
