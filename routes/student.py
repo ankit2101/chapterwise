@@ -230,7 +230,7 @@ def start_test():
 
     if not questions:
         try:
-            questions = claude_service.generate_questions(
+            questions = claude_service.generate_and_validate_questions(
                 chapter_text=chapter.pdf_content,
                 chapter_name=chapter.chapter_name,
                 board=chapter.board,

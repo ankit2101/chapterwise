@@ -418,13 +418,38 @@ def delete_chapter(chapter_id):
 @admin_bp.route('/api/admin/regenerate-questions/<int:chapter_id>', methods=['POST'])
 @login_required
 def regenerate_questions(chapter_id):
-    """Clear cached questions so they get regenerated on next test start."""
+    """Regenerate and validate questions for a chapter, then cache the result."""
+    from services import claude_service
+
     chapter = db.session.get(Chapter, chapter_id)
     if not chapter:
         return jsonify({'error': 'Chapter not found'}), 404
+
+    if not chapter.pdf_content or len(chapter.pdf_content.strip()) < 100:
+        return jsonify({'error': 'Chapter content is not available. Please re-upload the PDF.'}), 422
+
     chapter.questions_cache = None
     db.session.commit()
-    return jsonify({'success': True, 'message': 'Questions cache cleared. New questions will be generated on next test.'})
+
+    try:
+        questions = claude_service.generate_and_validate_questions(
+            chapter_text=chapter.pdf_content,
+            chapter_name=chapter.chapter_name,
+            board=chapter.board,
+            grade=chapter.grade,
+            subject=chapter.subject
+        )
+        chapter.questions_cache = json.dumps(questions)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': f'Questions regenerated and validated. {len(questions)} questions cached.',
+            'question_count': len(questions)
+        })
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': f'Could not regenerate questions: {str(e)}'}), 500
 
 
 # ─── Settings ───
