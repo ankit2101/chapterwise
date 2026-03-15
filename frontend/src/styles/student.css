@@ -1291,6 +1291,25 @@ body {
   color: var(--danger);
 }
 
+/* Prefetch status banner */
+.prefetch-status {
+  margin: 0.75rem 0;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.prefetch-loading {
+  background: #fff8e1;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.prefetch-done {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
 /* Skeleton loading */
 .summary-skeleton { display: flex; flex-direction: column; gap: 0.4rem; }
 .skeleton-line {

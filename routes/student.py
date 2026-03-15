@@ -259,6 +259,51 @@ def get_chapter_summary(chapter_id):
     })
 
 
+@student_bp.route('/api/prefetch-questions', methods=['POST'])
+def prefetch_questions():
+    """Pre-generate and cache questions for chapters that don't have them yet.
+    Called in the background from the Custom Test Builder Step 3 so that
+    start-custom-test returns quickly when the student clicks Start Test."""
+    data = request.get_json() or {}
+    chapter_ids = data.get('chapter_ids', [])
+
+    if not chapter_ids or not isinstance(chapter_ids, list):
+        return jsonify({'error': 'chapter_ids must be a non-empty list'}), 400
+
+    cached, generated, failed = [], [], []
+
+    for cid in chapter_ids:
+        chapter = db.session.get(Chapter, cid)
+        if not chapter:
+            failed.append(cid)
+            continue
+
+        if chapter.questions_cache:
+            cached.append(cid)
+            continue
+
+        if not chapter.pdf_content or len(chapter.pdf_content.strip()) < 100:
+            failed.append(cid)
+            continue
+
+        try:
+            questions = claude_service.generate_and_validate_questions(
+                chapter_text=chapter.pdf_content,
+                chapter_name=chapter.chapter_name,
+                board=chapter.board,
+                grade=chapter.grade,
+                subject=chapter.subject
+            )
+            chapter.questions_cache = json.dumps(questions)
+            db.session.commit()
+            generated.append(cid)
+        except Exception:
+            db.session.rollback()
+            failed.append(cid)
+
+    return jsonify({'cached': cached, 'generated': generated, 'failed': failed})
+
+
 @student_bp.route('/api/start-custom-test', methods=['POST'])
 def start_custom_test():
     """Start a test spanning multiple chapters."""

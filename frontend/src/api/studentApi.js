@@ -1,7 +1,12 @@
 const BASE = '/api';
 
 async function handleResponse(res) {
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('Server did not respond correctly. Please try again or reduce the number of chapters.');
+  }
   if (!res.ok) {
     throw new Error(data.error || `Request failed: ${res.status}`);
   }
@@ -80,6 +85,15 @@ export async function startCustomTest(chapterIds, studentName = '', studentId = 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chapter_ids: chapterIds, student_name: studentName, student_id: studentId }),
+  });
+  return handleResponse(res);
+}
+
+export async function prefetchQuestions(chapterIds) {
+  const res = await fetch(`${BASE}/prefetch-questions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chapter_ids: chapterIds }),
   });
   return handleResponse(res);
 }

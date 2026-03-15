@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getGrades, getSubjects, getChapters,
-  getChapterSummary, startCustomTest,
+  getChapterSummary, startCustomTest, prefetchQuestions,
 } from '../../api/studentApi';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import LoadingOverlay from '../shared/LoadingOverlay';
@@ -54,6 +54,7 @@ export default function CustomTestBuilder() {
   const [summaries, setSummaries] = useState({}); // { chapterId: { summary, loading, error } }
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState('');
+  const [prefetchStatus, setPrefetchStatus] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
 
   // Load grades on board change
   useEffect(() => {
@@ -98,9 +99,11 @@ export default function CustomTestBuilder() {
       .finally(() => setLoadingChapters(false));
   }, [board, grade, subject]);
 
-  // Fetch summaries when entering step 3
+  // Fetch summaries + prefetch questions when entering step 3
   useEffect(() => {
     if (step !== 3) return;
+
+    // Fetch chapter summaries (parallel, lightweight)
     basket.forEach(ch => {
       if (summaries[ch.id]) return; // already fetched or fetching
       setSummaries(prev => ({ ...prev, [ch.id]: { loading: true } }));
@@ -110,6 +113,12 @@ export default function CustomTestBuilder() {
           ...prev, [ch.id]: { summary: null, loading: false, error: 'Could not load summary.' }
         })));
     });
+
+    // Pre-generate questions in background so Start Test is instant
+    setPrefetchStatus('loading');
+    prefetchQuestions(basket.map(c => c.id))
+      .then(() => setPrefetchStatus('done'))
+      .catch(() => setPrefetchStatus('error')); // silent — start-custom-test still works
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleChapter(chapter) {
@@ -326,6 +335,17 @@ export default function CustomTestBuilder() {
                 );
               })}
             </div>
+
+            {prefetchStatus === 'loading' && (
+              <div className="prefetch-status prefetch-loading">
+                ⏳ Preparing questions for all chapters in the background...
+              </div>
+            )}
+            {prefetchStatus === 'done' && (
+              <div className="prefetch-status prefetch-done">
+                ✅ Questions ready — your test will start instantly!
+              </div>
+            )}
 
             {startError && <div className="alert alert-error">{startError}</div>}
 
