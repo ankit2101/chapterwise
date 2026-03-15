@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getGrades, getSubjects, getChapters, startTest } from '../../api/studentApi';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import LoadingOverlay from '../shared/LoadingOverlay';
@@ -190,6 +190,14 @@ export default function SelectionPage() {
           >
             {startingTest ? 'Preparing Test...' : 'Start Test'}
           </button>
+
+          <div className="custom-test-divider">
+            <span>or</span>
+          </div>
+
+          <Link to="/custom-test-builder" className="btn btn-outline btn-full">
+            Build a Custom Multi-Chapter Test
+          </Link>
         </div>
 
         <div className="how-it-works">

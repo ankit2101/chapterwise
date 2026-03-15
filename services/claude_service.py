@@ -500,6 +500,46 @@ def generate_and_validate_questions(chapter_text: str, chapter_name: str,
 
 
 # ─────────────────────────────────────────────────────────────
+# Chapter Summary Generation
+# ─────────────────────────────────────────────────────────────
+
+CHAPTER_SUMMARY_PROMPT = """You are a helpful teacher summarizing a textbook chapter for school students.
+
+Chapter: {chapter_name}
+Subject: {subject} | Board: {board} | Grade: {grade}
+
+Chapter Content:
+{chapter_text}
+
+Write a clear, concise summary of this chapter in 3–5 sentences. Cover the key topics and main concepts. Use simple language appropriate for Grade {grade} students. Return ONLY the summary text — no headings, no bullet points, no markdown."""
+
+
+def generate_chapter_summary(chapter) -> str:
+    """
+    Generate a 3–5 sentence plain-text summary for a chapter.
+    Uses chapter.pdf_content (truncated to 5000 chars).
+    Raises ValueError on failure.
+    """
+    client = _get_client()
+    prompt = CHAPTER_SUMMARY_PROMPT.format(
+        chapter_name=chapter.chapter_name,
+        subject=chapter.subject,
+        board=chapter.board,
+        grade=chapter.grade,
+        chapter_text=(chapter.pdf_content or '')[:5000]
+    )
+    message = client.messages.create(
+        model=_get_model(),
+        max_tokens=300,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    summary = message.content[0].text.strip()
+    # Strip any markdown headings Claude may include despite instructions
+    summary = re.sub(r'^#+\s+.*\n?', '', summary, flags=re.MULTILINE).strip()
+    return summary
+
+
+# ─────────────────────────────────────────────────────────────
 # Answer Evaluation
 # ─────────────────────────────────────────────────────────────
 
