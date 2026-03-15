@@ -593,7 +593,7 @@ def list_students():
         result.append({
             'id': s.id,
             'name': s.name,
-            'created_at': s.created_at.strftime('%d %b %Y'),
+            'created_at': s.created_at.strftime('%d %b %Y') if s.created_at else 'N/A',
             'active_sessions': active,
             'completed_sessions': completed,
         })
