@@ -108,7 +108,7 @@ def get_hint():
         return jsonify({'error': 'Session is not active'}), 400
 
     # Rate-limit: cap hints per session to prevent API abuse
-    hints_used = session.hints_used if hasattr(session, 'hints_used') and session.hints_used else 0
+    hints_used = session.hints_used or 0
     if hints_used >= MAX_HINTS_PER_SESSION:
         return jsonify({'error': 'Hint limit reached for this session'}), 429
 
@@ -150,7 +150,10 @@ def get_hint():
             related_previous_answers=related_previous,
             grade=hint_grade,
         )
-        return jsonify({'hint': hint})
+        # Persist hint count to enforce rate limit across requests
+        session.hints_used = hints_used + 1
+        db.session.commit()
+        return jsonify({'hint': hint, 'hints_remaining': MAX_HINTS_PER_SESSION - session.hints_used})
     except ValueError as e:
         return jsonify({'error': str(e)}), 500
     except Exception as e:

@@ -83,6 +83,7 @@ class TestSession(db.Model):
     questions_json = db.Column(db.Text, nullable=True)
     current_question_index = db.Column(db.Integer, default=0)
     answers_json = db.Column(db.Text, default='[]')
+    hints_used = db.Column(db.Integer, default=0)
     status = db.Column(db.String(20), default='active')  # active | completed | expired
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_activity = db.Column(db.DateTime, default=datetime.utcnow)
