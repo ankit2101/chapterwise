@@ -18,8 +18,9 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
 - **Custom Test Builder** — Build a personalised test spanning multiple chapters across subjects in a 3-step wizard:
   - **Step 1** — Select Board & Grade
   - **Step 2** — Browse subjects, click chapters to add them to a basket (shown as removable chips); freely switch subjects to pick across different subjects
-  - **Step 3** — Review an AI-generated summary for each selected chapter, then start the test
+  - **Step 3** — Review an AI-generated summary for each selected chapter, then start the test; questions for all chapters are pre-generated in the background so the test starts instantly
   - Questions from all selected chapters are merged by mark-band (Section A → B → C) and shuffled within each section
+  - **Question cap** — custom tests are capped at 75 questions; if selections exceed this, questions are sampled proportionally per chapter while guaranteeing at least one question per unique (chapter, topic) pair
 - **Chapter summaries** — AI-generated 3–5 sentence summaries for each chapter, displayed in the Custom Test Builder review step and cached after first generation
 - **Marks-aware hints** — Each question shows its mark value and a plain-English guide on how much to write
 - **Full-topic coverage** — Questions are scaled to chapter size (simple / medium / large) and distributed across every section of the chapter
@@ -352,7 +353,8 @@ python3 -c "import secrets; print(secrets.token_hex(48))"
 | `GET` | `/api/subjects?board=CBSE&grade=8` | Subjects for board + grade |
 | `GET` | `/api/chapters?board=CBSE&grade=8&subject=Science` | Chapters for board + grade + subject |
 | `POST` | `/api/start-test` | Create session, generate & validate questions, return first question |
-| `POST` | `/api/start-custom-test` | Create a multi-chapter test session; merges questions by mark-band across all selected chapters |
+| `POST` | `/api/prefetch-questions` | Pre-generate and cache questions for a list of chapter IDs (called from Custom Test Builder Step 3; idempotent — skips chapters already cached) |
+| `POST` | `/api/start-custom-test` | Create a multi-chapter test session; merges questions by mark-band across all selected chapters (capped at 75 with topic-coverage sampling) |
 | `GET` | `/api/chapter-summary/<id>` | Get (and generate + cache if missing) an AI summary for a chapter |
 | `POST` | `/api/submit-answer` | Evaluate answer, return feedback + next question or summary |
 | `POST` | `/api/student/hint` | Generate a context-aware hint for the current question (uses student's prior answers on same topic; max 30 hints per session, persisted in DB) |
@@ -414,7 +416,7 @@ The production deployment is hardened with the following controls:
 - **Image-based PDFs** (scanned documents) will extract very little text. The admin dashboard shows a warning for these files, and tests cannot be started until sufficient text is available.
 - **PDF extraction** uses a 3-strategy cascade: `pdftotext` (poppler C binary, fastest) → `pypdf` → `pdfplumber`. This ensures reliable extraction even for complex or large PDFs that cause Python-based parsers to hang. The `pdftotext` binary path is resolved automatically via `shutil.which()` so it works on both macOS (Homebrew) and Linux without hardcoding.
 - **Question caching** — questions for a chapter are generated, validated by the LLM-as-judge loop, and then stored in the database. Use the **Refresh Q** button in the admin dashboard to fully regenerate and re-validate them (e.g., after re-uploading a better PDF). The validation cost (up to 3 judge/fixer API calls) is incurred only once per chapter since the result is immediately cached.
-- **Custom tests** — the Custom Test Builder generates questions for each selected chapter independently (using the same cache as single-chapter tests), then merges them into one combined paper ordered Section A → B → C. Questions within each section are shuffled. The existing `TestPage` handles both single-chapter and custom tests without modification.
+- **Custom tests** — the Custom Test Builder generates questions for each selected chapter independently (using the same cache as single-chapter tests), then merges them into one combined paper ordered Section A → B → C. Questions within each section are shuffled. The existing `TestPage` handles both single-chapter and custom tests without modification. To prevent very large tests, the total is capped at 75 questions; when the cap applies, questions are sampled proportionally per chapter while guaranteeing one question per unique (chapter, topic_tag) pair. Questions are pre-generated in the background when the student reaches Step 3, so clicking "Start Custom Test" is instant after prefetch completes; the Start Test button is disabled until prefetch finishes.
 - **Hints** — each hint call is a lightweight Claude request (max 200 tokens). Hints are context-aware: Claude receives the student's previous answers on the same `topic_tag` (up to 3) so it can connect the nudge to knowledge the student has already demonstrated. Hints never reveal key points word-for-word. The hint count is persisted in the database (`test_sessions.hints_used`) so the 30-hint cap survives page refreshes and session recovery.
 - **Model selection** — switching the Claude model (Haiku ↔ Sonnet) takes effect immediately for all new question generation, validation, answer evaluation, and hint generation; no server restart is required. The active model is cached in memory for 60 seconds to avoid a database round-trip on every Claude call; the cache is invalidated instantly when you save a new model via the Admin Panel.
 - **Bulk upload** — files are uploaded one at a time sequentially to avoid timeouts on large PDFs. A live progress indicator shows which file is being processed.
@@ -422,6 +424,13 @@ The production deployment is hardened with the following controls:
 ---
 
 ## Changelog
+
+### v1.3.1 (2026-03-15)
+- **New:** `POST /api/prefetch-questions` — pre-generates and caches questions for all selected chapters in the background when the student reaches Step 3 of the Custom Test Builder, so tests start instantly
+- **Fix:** Custom tests capped at 75 questions with proportional-per-chapter sampling that guarantees at least one question per unique (chapter, topic) pair
+- **Fix:** Start Test button disabled while question prefetch is in progress to prevent premature submission
+- **Fix:** nginx timeout increased and gunicorn upgraded to handle long-running question generation for large custom tests without a gateway timeout
+- **Fix:** `studentApi.js` now catches non-JSON server responses and surfaces a human-readable error instead of an unhandled parse failure
 
 ### v1.3.0 (2026-03-15)
 - **New:** Custom Test Builder — 3-step wizard for multi-chapter, cross-subject tests
