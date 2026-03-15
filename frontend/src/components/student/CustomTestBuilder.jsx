@@ -354,9 +354,10 @@ export default function CustomTestBuilder() {
               <button
                 className="btn btn-start"
                 onClick={handleStartTest}
-                disabled={starting}
+                disabled={starting || prefetchStatus === 'loading'}
+                title={prefetchStatus === 'loading' ? 'Please wait — preparing questions in background...' : ''}
               >
-                {starting ? 'Preparing Test...' : `Start Custom Test (${basket.length} chapters)`}
+                {starting ? 'Building Test...' : prefetchStatus === 'loading' ? '⏳ Preparing questions...' : `Start Custom Test (${basket.length} chapters)`}
               </button>
             </div>
           </div>
