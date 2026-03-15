@@ -70,6 +70,20 @@ export async function requestHint(sessionKey, answerText = '') {
   return handleResponse(res);
 }
 
+export async function getChapterSummary(chapterId) {
+  const res = await fetch(`${BASE}/chapter-summary/${chapterId}`);
+  return handleResponse(res);
+}
+
+export async function startCustomTest(chapterIds, studentName = '', studentId = null) {
+  const res = await fetch(`${BASE}/start-custom-test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chapter_ids: chapterIds, student_name: studentName, student_id: studentId }),
+  });
+  return handleResponse(res);
+}
+
 export async function sessionPing(sessionKey) {
   const res = await fetch(`${BASE}/student/session-ping`, {
     method: 'POST',

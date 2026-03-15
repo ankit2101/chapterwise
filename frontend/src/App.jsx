@@ -8,6 +8,7 @@ import ToastContainer from './components/shared/Toast';
 import StudentLogin from './components/student/StudentLogin';
 import SelectionPage from './components/student/SelectionPage';
 import TestPage from './components/student/TestPage';
+import CustomTestBuilder from './components/student/CustomTestBuilder';
 import AdminLogin from './components/admin/AdminLogin';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminSettings from './components/admin/AdminSettings';
@@ -36,6 +37,14 @@ export default function App() {
               element={
                 <StudentProtectedRoute>
                   <TestPage />
+                </StudentProtectedRoute>
+              }
+            />
+            <Route
+              path="/custom-test-builder"
+              element={
+                <StudentProtectedRoute>
+                  <CustomTestBuilder />
                 </StudentProtectedRoute>
               }
             />

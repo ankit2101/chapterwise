@@ -62,12 +62,24 @@ def student_login():
         chapter = active_session.chapter
         questions = json.loads(active_session.questions_json) if active_session.questions_json else []
         idx = active_session.current_question_index
+        if chapter:
+            ch_name = chapter.chapter_name
+            ch_subject = chapter.subject
+            ch_grade = chapter.grade
+            ch_board = chapter.board
+        else:
+            ch_ids = json.loads(active_session.chapters_json or '[]')
+            first_ch = db.session.get(Chapter, ch_ids[0]) if ch_ids else None
+            ch_name = 'Custom Test'
+            ch_subject = first_ch.subject if first_ch else ''
+            ch_grade = first_ch.grade if first_ch else ''
+            ch_board = first_ch.board if first_ch else ''
         response['active_session'] = {
             'session_key': active_session.session_key,
-            'chapter_name': chapter.chapter_name,
-            'subject': chapter.subject,
-            'grade': chapter.grade,
-            'board': chapter.board,
+            'chapter_name': ch_name,
+            'subject': ch_subject,
+            'grade': ch_grade,
+            'board': ch_board,
             'current_question_index': idx,
             'total_questions': len(questions),
             'last_activity': active_session.last_activity.isoformat(),
@@ -108,6 +120,14 @@ def get_hint():
     current_q = questions[idx]
     chapter = session.chapter
 
+    # For custom tests chapter is None; resolve grade from the question's source chapter
+    if chapter:
+        hint_grade = chapter.grade
+    else:
+        source_chapter_id = current_q.get('chapter_id')
+        source_chapter = db.session.get(Chapter, source_chapter_id) if source_chapter_id else None
+        hint_grade = source_chapter.grade if source_chapter else 8
+
     # Collect previous answers on the same topic to give context-aware hints
     topic_tag = current_q.get('topic_tag', '')
     past_answers = json.loads(session.answers_json)
@@ -128,7 +148,7 @@ def get_hint():
             topic_tag=topic_tag,
             partial_answer=partial_answer,
             related_previous_answers=related_previous,
-            grade=chapter.grade,
+            grade=hint_grade,
         )
         return jsonify({'hint': hint})
     except ValueError as e:
@@ -206,6 +226,135 @@ def get_chapters():
     )
     return jsonify({
         'chapters': [{'id': c.id, 'chapter_name': c.chapter_name} for c in chapters]
+    })
+
+
+@student_bp.route('/api/chapter-summary/<int:chapter_id>')
+def get_chapter_summary(chapter_id):
+    """Return (and lazily generate) a plain-text summary for a chapter."""
+    chapter = db.session.get(Chapter, chapter_id)
+    if not chapter:
+        return jsonify({'error': 'Chapter not found'}), 404
+
+    if not chapter.summary_cache:
+        if not chapter.pdf_content or len(chapter.pdf_content.strip()) < 100:
+            return jsonify({'error': 'Chapter content not available'}), 422
+        try:
+            summary = claude_service.generate_chapter_summary(chapter)
+            chapter.summary_cache = summary
+            db.session.commit()
+        except Exception as e:
+            return jsonify({'error': f'Could not generate summary: {str(e)}'}), 500
+
+    return jsonify({
+        'chapter_id': chapter.id,
+        'chapter_name': chapter.chapter_name,
+        'subject': chapter.subject,
+        'board': chapter.board,
+        'grade': chapter.grade,
+        'summary': chapter.summary_cache,
+    })
+
+
+@student_bp.route('/api/start-custom-test', methods=['POST'])
+def start_custom_test():
+    """Start a test spanning multiple chapters."""
+    data = request.get_json() or {}
+    chapter_ids = data.get('chapter_ids', [])
+    student_id = data.get('student_id')
+    student_name = data.get('student_name', '').strip()
+
+    if not chapter_ids or not isinstance(chapter_ids, list):
+        return jsonify({'error': 'chapter_ids must be a non-empty list'}), 400
+    if len(chapter_ids) < 2:
+        return jsonify({'error': 'Select at least 2 chapters for a custom test'}), 400
+
+    # Load and validate all chapters
+    chapters = []
+    for cid in chapter_ids:
+        chapter = db.session.get(Chapter, cid)
+        if not chapter:
+            return jsonify({'error': f'Chapter {cid} not found'}), 404
+        if not chapter.pdf_content or len(chapter.pdf_content.strip()) < 100:
+            return jsonify({'error': f'Chapter "{chapter.chapter_name}" has no content. Ask admin to re-upload.'}), 422
+        chapters.append(chapter)
+
+    # Collect/generate questions per chapter
+    one_mark, three_mark, five_mark = [], [], []
+
+    for chapter in chapters:
+        if chapter.questions_cache:
+            try:
+                questions = json.loads(chapter.questions_cache)
+            except Exception:
+                questions = None
+        else:
+            questions = None
+
+        if not questions:
+            try:
+                questions = claude_service.generate_and_validate_questions(
+                    chapter_text=chapter.pdf_content,
+                    chapter_name=chapter.chapter_name,
+                    board=chapter.board,
+                    grade=chapter.grade,
+                    subject=chapter.subject
+                )
+                chapter.questions_cache = json.dumps(questions)
+                db.session.commit()
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 500
+            except Exception as e:
+                return jsonify({'error': f'Could not generate questions for "{chapter.chapter_name}": {str(e)}'}), 500
+
+        # Tag each question with its source chapter and bucket by marks
+        for q in questions:
+            q_copy = dict(q)
+            q_copy['chapter_id'] = chapter.id
+            q_copy['chapter_name'] = chapter.chapter_name
+            marks = q_copy.get('marks', 1)
+            if marks == 1:
+                one_mark.append(q_copy)
+            elif marks == 3:
+                three_mark.append(q_copy)
+            else:
+                five_mark.append(q_copy)
+
+    # Shuffle within each section, then concatenate: Section A → B → C
+    random.shuffle(one_mark)
+    random.shuffle(three_mark)
+    random.shuffle(five_mark)
+    questions = one_mark + three_mark + five_mark
+
+    # Re-number sequentially
+    for i, q in enumerate(questions, start=1):
+        q['question_number'] = i
+
+    session = TestSession(
+        chapter_id=None,
+        chapters_json=json.dumps(chapter_ids),
+        student_id=student_id,
+        questions_json=json.dumps(questions),
+        current_question_index=0,
+        answers_json=json.dumps([]),
+        status='active',
+        last_activity=datetime.utcnow()
+    )
+    db.session.add(session)
+    db.session.commit()
+
+    first_q = questions[0]
+    return jsonify({
+        'session_key': session.session_key,
+        'total_questions': len(questions),
+        'student_name': student_name,
+        'chapter_names': [c.chapter_name for c in chapters],
+        'current_question': {
+            'question_number': first_q['question_number'],
+            'question_text': first_q['question_text'],
+            'topic_tag': first_q.get('topic_tag', ''),
+            'marks': first_q.get('marks', 1)
+        }
     })
 
 
@@ -331,12 +480,20 @@ def submit_answer():
     current_q = questions[idx]
     chapter = session.chapter
 
+    # For custom tests chapter is None; resolve grade from the question's source chapter
+    if chapter:
+        grade = chapter.grade
+    else:
+        source_chapter_id = current_q.get('chapter_id')
+        source_chapter = db.session.get(Chapter, source_chapter_id) if source_chapter_id else None
+        grade = source_chapter.grade if source_chapter else 8  # sensible fallback
+
     try:
         evaluation = claude_service.evaluate_answer(
             question_text=current_q['question_text'],
             key_points=current_q['key_points'],
             student_answer=answer_text,
-            grade=chapter.grade,
+            grade=grade,
             student_name=student_name
         )
     except ValueError as e:
@@ -396,15 +553,29 @@ def get_session(session_key):
     answers = json.loads(session.answers_json) if session.answers_json else []
     idx = session.current_question_index
 
+    # Resolve display info — custom tests have no single chapter
+    if chapter:
+        chapter_name = chapter.chapter_name
+        subject = chapter.subject
+        grade = chapter.grade
+        board = chapter.board
+    else:
+        chapter_ids_list = json.loads(session.chapters_json or '[]')
+        first_ch = db.session.get(Chapter, chapter_ids_list[0]) if chapter_ids_list else None
+        chapter_name = 'Custom Test'
+        subject = first_ch.subject if first_ch else ''
+        grade = first_ch.grade if first_ch else ''
+        board = first_ch.board if first_ch else ''
+
     result = {
         'session_key': session.session_key,
         'status': session.status,
         'total_questions': len(questions),
         'current_question_index': idx,
-        'chapter_name': chapter.chapter_name,
-        'subject': chapter.subject,
-        'grade': chapter.grade,
-        'board': chapter.board,
+        'chapter_name': chapter_name,
+        'subject': subject,
+        'grade': grade,
+        'board': board,
         'answers': answers,
     }
 

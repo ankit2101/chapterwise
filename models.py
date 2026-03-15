@@ -55,6 +55,7 @@ class Chapter(db.Model):
     pdf_path = db.Column(db.String(300), nullable=False)
     pdf_content = db.Column(db.Text, nullable=True)
     questions_cache = db.Column(db.Text, nullable=True)
+    summary_cache = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (
@@ -63,7 +64,8 @@ class Chapter(db.Model):
     )
 
     test_sessions = db.relationship('TestSession', backref='chapter',
-                                    lazy=True, cascade='all, delete-orphan')
+                                    lazy=True, cascade='all, delete-orphan',
+                                    foreign_keys='TestSession.chapter_id')
 
     def __repr__(self):
         return f'<Chapter {self.board} Grade{self.grade} {self.subject}: {self.chapter_name}>'
@@ -75,7 +77,8 @@ class TestSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_key = db.Column(db.String(36), unique=True, nullable=False,
                             default=lambda: str(uuid.uuid4()))
-    chapter_id = db.Column(db.Integer, db.ForeignKey('chapters.id'), nullable=False)
+    chapter_id = db.Column(db.Integer, db.ForeignKey('chapters.id'), nullable=True)
+    chapters_json = db.Column(db.Text, nullable=True)  # JSON array of chapter IDs for custom tests
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)
     questions_json = db.Column(db.Text, nullable=True)
     current_question_index = db.Column(db.Integer, default=0)
