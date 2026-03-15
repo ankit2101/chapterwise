@@ -15,10 +15,16 @@ An AI-powered chapter-wise test platform for Indian school students (Grade 6–1
   - **Section A** — 10–15 one-mark questions (definitions, single facts, one-liners)
   - **Section B** — 5–10 three-mark questions (brief explanations, 3 key points)
   - **Section C** — 5–10 five-mark questions (detailed answers, 5 key points)
+- **Custom Test Builder** — Build a personalised test spanning multiple chapters across subjects in a 3-step wizard:
+  - **Step 1** — Select Board & Grade
+  - **Step 2** — Browse subjects, click chapters to add them to a basket (shown as removable chips); freely switch subjects to pick across different subjects
+  - **Step 3** — Review an AI-generated summary for each selected chapter, then start the test
+  - Questions from all selected chapters are merged by mark-band (Section A → B → C) and shuffled within each section
+- **Chapter summaries** — AI-generated 3–5 sentence summaries for each chapter, displayed in the Custom Test Builder review step and cached after first generation
 - **Marks-aware hints** — Each question shows its mark value and a plain-English guide on how much to write
 - **Full-topic coverage** — Questions are scaled to chapter size (simple / medium / large) and distributed across every section of the chapter
 - **Voice answers** — Speak your answer; the browser transcribes it in real time using the Web Speech API
-- **Context-aware hints** — Tap "Get Hint" on any question for a gentle nudge; hints are personalised using the student's previous answers on the same topic and never reveal key points directly
+- **Context-aware hints** — Tap "Get Hint" on any question for a gentle nudge; hints are personalised using the student's previous answers on the same topic and never reveal key points directly (max 30 hints per session, enforced and persisted in the database)
 - **Text-to-Speech** — Each question is read aloud automatically; a replay button is always available
 - **Shuffled questions** — Question order is randomised on every new test attempt so no two attempts are identical
 - **AI evaluation** — Claude checks whether the student covered the key points (lenient on grammar, sequence, and phrasing)
@@ -108,7 +114,7 @@ SECRET_KEY=chapterwise-secret-change-in-prod-2024
 # ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-> The `SECRET_KEY` secures Flask session cookies. Any long random string works for local use. For production, generate one with `python3 -c "import secrets; print(secrets.token_hex(32))"`.
+> The `SECRET_KEY` secures Flask session cookies. Any long random string works for local use. For production, generate a strong one with `python3 -c "import secrets; print(secrets.token_hex(48))"`.
 
 > The `ANTHROPIC_API_KEY` set through the Admin Panel takes precedence over the `.env` value.
 
@@ -191,7 +197,13 @@ Text extracted: pdftotext → pypdf → pdfplumber (cascade)
         ↓
 Student logs in with name + PIN
         ↓
-Student selects Board → Grade → Subject → Chapter → Start Test
+Option A — Single Chapter Test:
+  Student selects Board → Grade → Subject → Chapter → Start Test
+
+Option B — Custom Multi-Chapter Test:
+  Step 1: Select Board & Grade
+  Step 2: Add chapters from one or more subjects to basket
+  Step 3: Review AI-generated chapter summaries → Start Custom Test
         ↓
 Claude counts chapter subtopics and generates:
   • 10–15 one-mark questions  (Section A)
@@ -264,7 +276,8 @@ chapterwise/
 │
 ├── routes/
 │   ├── student.py          # /api/student/login, /api/grades, /api/subjects, /api/chapters,
-│   │                       # /api/start-test, /api/submit-answer, /api/student/hint, /api/session/<key>
+│   │                       # /api/start-test, /api/start-custom-test, /api/chapter-summary/<id>,
+│   │                       # /api/submit-answer, /api/student/hint, /api/session/<key>
 │   └── admin.py            # /api/admin/* (login, upload, bulk-upload, chapter/pdf, chapter/rename,
 │                           #               delete, password, API key, model config, students, student-progress)
 │
@@ -283,8 +296,8 @@ chapterwise/
 │       ├── api/             # studentApi.js, adminApi.js (fetch wrappers with error handling)
 │       ├── hooks/           # useSpeechRecognition.js, useTextToSpeech.js
 │       ├── components/
-│       │   ├── student/     # StudentLogin, SelectionPage, TestPage,
-│       │   │                # QuestionCard, VoiceInput, FeedbackCard, SummaryPage
+│       │   ├── student/     # StudentLogin, SelectionPage, CustomTestBuilder (3-step wizard),
+│       │   │                # TestPage, QuestionCard, VoiceInput, FeedbackCard, SummaryPage
 │       │   ├── admin/       # AdminLogin, AdminDashboard (tabbed), UploadForm, BulkUploadForm,
 │       │   │                # ChapterTable (with PDF viewer + rename), AdminSettings,
 │       │   │                # StudentManagement, StudentProgress
@@ -310,7 +323,7 @@ chapterwise/
 
 Generate a secure secret key:
 ```bash
-python3 -c "import secrets; print(secrets.token_hex(32))"
+python3 -c "import secrets; print(secrets.token_hex(48))"
 ```
 
 ### App Configuration (`config.py`)
@@ -339,8 +352,10 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 | `GET` | `/api/subjects?board=CBSE&grade=8` | Subjects for board + grade |
 | `GET` | `/api/chapters?board=CBSE&grade=8&subject=Science` | Chapters for board + grade + subject |
 | `POST` | `/api/start-test` | Create session, generate & validate questions, return first question |
+| `POST` | `/api/start-custom-test` | Create a multi-chapter test session; merges questions by mark-band across all selected chapters |
+| `GET` | `/api/chapter-summary/<id>` | Get (and generate + cache if missing) an AI summary for a chapter |
 | `POST` | `/api/submit-answer` | Evaluate answer, return feedback + next question or summary |
-| `POST` | `/api/student/hint` | Generate a context-aware hint for the current question (uses student's prior answers on same topic; max 30 hints per session) |
+| `POST` | `/api/student/hint` | Generate a context-aware hint for the current question (uses student's prior answers on same topic; max 30 hints per session, persisted in DB) |
 | `GET` | `/api/session/<key>` | Restore session state (used on page refresh) |
 
 ### Admin Endpoints (require session cookie)
@@ -375,15 +390,19 @@ The production deployment is hardened with the following controls:
 
 | Control | Detail |
 |---|---|
-| TLS | TLS 1.2 and 1.3 only; TLS 1.0/1.1 rejected |
+| TLS | TLS 1.2 and 1.3 only; TLS 1.0/1.1 disabled |
 | HSTS | `max-age=31536000; includeSubDomains` |
 | Security headers | `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy` |
+| Session cookies | `Secure`, `HttpOnly`, `SameSite=Lax` flags set in production |
+| Session lifetime | Admin sessions expire after 8 hours of inactivity |
 | Login rate limiting | 5 requests/minute (burst 2) on both `/api/admin/login` and `/api/student/login` |
 | API rate limiting | 30 requests/minute on all other `/api/` endpoints |
 | Rate limit response | `429` with `Retry-After: 60` header and JSON body (not nginx HTML) |
+| Hint rate limiting | Max 30 hints per test session; count persisted in database so the limit survives page refreshes |
 | Username enumeration | Student login returns identical error for wrong name and wrong PIN |
 | bcrypt | All passwords and PINs stored as bcrypt hashes |
 | Session auth | All admin endpoints require a valid session cookie |
+| File permissions | `.env` → `0600`; `chapterwise.db` → `0640`; `uploads/` → `0750` |
 | HTTP redirect | Bare IP HTTP access redirects to HTTPS hostname |
 | nginx version | Hidden (`server_tokens off`) |
 
@@ -395,9 +414,27 @@ The production deployment is hardened with the following controls:
 - **Image-based PDFs** (scanned documents) will extract very little text. The admin dashboard shows a warning for these files, and tests cannot be started until sufficient text is available.
 - **PDF extraction** uses a 3-strategy cascade: `pdftotext` (poppler C binary, fastest) → `pypdf` → `pdfplumber`. This ensures reliable extraction even for complex or large PDFs that cause Python-based parsers to hang. The `pdftotext` binary path is resolved automatically via `shutil.which()` so it works on both macOS (Homebrew) and Linux without hardcoding.
 - **Question caching** — questions for a chapter are generated, validated by the LLM-as-judge loop, and then stored in the database. Use the **Refresh Q** button in the admin dashboard to fully regenerate and re-validate them (e.g., after re-uploading a better PDF). The validation cost (up to 3 judge/fixer API calls) is incurred only once per chapter since the result is immediately cached.
-- **Hints** — each hint call is a lightweight Claude request (max 200 tokens). Hints are context-aware: Claude receives the student's previous answers on the same `topic_tag` (up to 3) so it can connect the nudge to knowledge the student has already demonstrated. Hints never reveal key points word-for-word.
+- **Custom tests** — the Custom Test Builder generates questions for each selected chapter independently (using the same cache as single-chapter tests), then merges them into one combined paper ordered Section A → B → C. Questions within each section are shuffled. The existing `TestPage` handles both single-chapter and custom tests without modification.
+- **Hints** — each hint call is a lightweight Claude request (max 200 tokens). Hints are context-aware: Claude receives the student's previous answers on the same `topic_tag` (up to 3) so it can connect the nudge to knowledge the student has already demonstrated. Hints never reveal key points word-for-word. The hint count is persisted in the database (`test_sessions.hints_used`) so the 30-hint cap survives page refreshes and session recovery.
 - **Model selection** — switching the Claude model (Haiku ↔ Sonnet) takes effect immediately for all new question generation, validation, answer evaluation, and hint generation; no server restart is required. The active model is cached in memory for 60 seconds to avoid a database round-trip on every Claude call; the cache is invalidated instantly when you save a new model via the Admin Panel.
 - **Bulk upload** — files are uploaded one at a time sequentially to avoid timeouts on large PDFs. A live progress indicator shows which file is being processed.
+
+---
+
+## Changelog
+
+### v1.3.0 (2026-03-15)
+- **New:** Custom Test Builder — 3-step wizard for multi-chapter, cross-subject tests
+- **New:** AI-generated chapter summaries with database caching (`summary_cache`)
+- **New:** `POST /api/start-custom-test` and `GET /api/chapter-summary/<id>` endpoints
+- **Fix:** Hints rate limit now properly persisted in `test_sessions.hints_used` column (was resetting to 0 on every request)
+- **Fix:** Admin Students tab 500 error when a student record had a NULL `created_at`
+- **Security:** Session cookies hardened (`Secure`, `HttpOnly`, `SameSite=Lax`); session lifetime capped at 8 hours
+- **Security:** File permissions tightened — `.env` → `0600`, `chapterwise.db` → `0640`, `uploads/` → `0750`
+- **Security:** TLS 1.0 and 1.1 disabled on production server
+
+### v1.2.1 and earlier
+See [GitHub Releases](https://github.com/ankit2101/chapterwise/releases) for earlier release notes.
 
 ---
 
