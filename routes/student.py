@@ -368,6 +368,49 @@ def start_custom_test():
             else:
                 five_mark.append(q_copy)
 
+    # Cap total questions at 75, preserving topic coverage across all chapters
+    MAX_CUSTOM_QUESTIONS = 75
+
+    def _proportional_by_chapter(qs, budget):
+        """Sample `budget` questions from qs, proportional by chapter_id."""
+        from collections import defaultdict
+        by_chapter = defaultdict(list)
+        for q in qs:
+            by_chapter[q['chapter_id']].append(q)
+        total = len(qs)
+        result = []
+        for chapter_qs in by_chapter.values():
+            alloc = max(1, round(len(chapter_qs) / total * budget))
+            result.extend(random.sample(chapter_qs, min(alloc, len(chapter_qs))))
+        if len(result) > budget:
+            result = random.sample(result, budget)
+        return result
+
+    def _sample_with_topic_coverage(qs, budget):
+        """Sample up to `budget` questions, guaranteeing one per unique (chapter, topic_tag)."""
+        if len(qs) <= budget:
+            return qs
+        seen, priority, remainder = set(), [], []
+        for q in qs:
+            key = (q['chapter_id'], q.get('topic_tag', ''))
+            if key not in seen:
+                seen.add(key)
+                priority.append(q)
+            else:
+                remainder.append(q)
+        if len(priority) >= budget:
+            return _proportional_by_chapter(priority, budget)
+        return priority + _proportional_by_chapter(remainder, budget - len(priority))
+
+    total_questions = len(one_mark) + len(three_mark) + len(five_mark)
+    if total_questions > MAX_CUSTOM_QUESTIONS:
+        budget_a = max(1, round(len(one_mark) / total_questions * MAX_CUSTOM_QUESTIONS))
+        budget_b = max(1, round(len(three_mark) / total_questions * MAX_CUSTOM_QUESTIONS))
+        budget_c = max(1, MAX_CUSTOM_QUESTIONS - budget_a - budget_b)
+        one_mark   = _sample_with_topic_coverage(one_mark,   budget_a)
+        three_mark = _sample_with_topic_coverage(three_mark, budget_b)
+        five_mark  = _sample_with_topic_coverage(five_mark,  budget_c)
+
     # Shuffle within each section, then concatenate: Section A → B → C
     random.shuffle(one_mark)
     random.shuffle(three_mark)
