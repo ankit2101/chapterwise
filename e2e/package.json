@@ -1,0 +1,22 @@
+{
+  "name": "chapterwise-e2e",
+  "version": "1.0.0",
+  "description": "Playwright E2E tests for ChapterWise",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:student": "playwright test tests/student.spec.js",
+    "test:admin": "playwright test tests/admin.spec.js",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
