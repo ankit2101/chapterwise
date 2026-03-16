@@ -319,8 +319,10 @@ class TestDeleteChapter:
 # ═══════════════════════════════════════════════════════════════════════════
 class TestRegenerateQuestions:
     def test_regenerate_success(self, admin_client, chapter_id):
-        with patch('routes.admin.claude_service') as mock_svc:
-            mock_svc.generate_and_validate_questions.return_value = SAMPLE_QUESTIONS
+        # claude_service is imported inside the route function body, so we must
+        # patch the function directly on the services module, not on routes.admin.
+        with patch('services.claude_service.generate_and_validate_questions',
+                   return_value=SAMPLE_QUESTIONS):
             res = admin_client.post(f'/api/admin/regenerate-questions/{chapter_id}')
         assert res.status_code == 200
         data = res.get_json()
