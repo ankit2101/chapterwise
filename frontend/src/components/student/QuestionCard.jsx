@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import useTextToSpeech from '../../hooks/useTextToSpeech';
 
-export default function QuestionCard({ question, currentNumber, totalQuestions, onRequestHint, hint, hintLoading, hintUsed }) {
+export default function QuestionCard({ question, currentNumber, totalQuestions, onRequestHint, hint, hintLoading, hintUsed, lang = 'en-IN' }) {
   const { speak, stop, isSpeaking, isSupported } = useTextToSpeech();
 
   // Auto-read question when it changes
@@ -9,11 +9,11 @@ export default function QuestionCard({ question, currentNumber, totalQuestions, 
     if (question?.question_text) {
       // Small delay to let the component render first
       const timer = setTimeout(() => {
-        speak(`Question ${question.question_number}. ${question.question_text}`);
+        speak(`Question ${question.question_number}. ${question.question_text}`, lang);
       }, 400);
       return () => clearTimeout(timer);
     }
-  }, [question?.question_text]);
+  }, [question?.question_text, lang]);
 
   // Stop speech on unmount
   useEffect(() => {
@@ -69,7 +69,7 @@ export default function QuestionCard({ question, currentNumber, totalQuestions, 
               if (isSpeaking) {
                 stop();
               } else {
-                speak(`Question ${question.question_number}. ${question.question_text}`);
+                speak(`Question ${question.question_number}. ${question.question_text}`, lang);
               }
             }}
             title={isSpeaking ? 'Stop reading' : 'Read question aloud'}

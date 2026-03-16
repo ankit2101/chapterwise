@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import useSpeechRecognition from '../../hooks/useSpeechRecognition';
 
-export default function VoiceInput({ value, onChange, disabled }) {
+export default function VoiceInput({ value, onChange, disabled, lang = 'en-IN' }) {
   const {
     isListening,
     error: speechError,
@@ -25,7 +25,7 @@ export default function VoiceInput({ value, onChange, disabled }) {
     } else {
       // Pass existing textarea content as base
       setTranscript(value);
-      startListening(value);
+      startListening(value, lang);
     }
   };
 

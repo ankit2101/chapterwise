@@ -123,10 +123,12 @@ def get_hint():
     # For custom tests chapter is None; resolve grade from the question's source chapter
     if chapter:
         hint_grade = chapter.grade
+        hint_subject = chapter.subject
     else:
         source_chapter_id = current_q.get('chapter_id')
         source_chapter = db.session.get(Chapter, source_chapter_id) if source_chapter_id else None
         hint_grade = source_chapter.grade if source_chapter else 8
+        hint_subject = source_chapter.subject if source_chapter else ''
 
     # Collect previous answers on the same topic to give context-aware hints
     topic_tag = current_q.get('topic_tag', '')
@@ -149,6 +151,7 @@ def get_hint():
             partial_answer=partial_answer,
             related_previous_answers=related_previous,
             grade=hint_grade,
+            subject=hint_subject,
         )
         # Persist hint count to enforce rate limit across requests
         session.hints_used = hints_used + 1
@@ -574,10 +577,12 @@ def submit_answer():
     # For custom tests chapter is None; resolve grade from the question's source chapter
     if chapter:
         grade = chapter.grade
+        subject = chapter.subject
     else:
         source_chapter_id = current_q.get('chapter_id')
         source_chapter = db.session.get(Chapter, source_chapter_id) if source_chapter_id else None
         grade = source_chapter.grade if source_chapter else 8  # sensible fallback
+        subject = source_chapter.subject if source_chapter else ''
 
     try:
         evaluation = claude_service.evaluate_answer(
@@ -585,7 +590,8 @@ def submit_answer():
             key_points=current_q['key_points'],
             student_answer=answer_text,
             grade=grade,
-            student_name=student_name
+            student_name=student_name,
+            subject=subject
         )
     except ValueError as e:
         return jsonify({'error': str(e)}), 500

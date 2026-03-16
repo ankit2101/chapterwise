@@ -282,6 +282,7 @@ export default function TestPage() {
               hint={hint}
               hintLoading={hintLoading}
               hintUsed={hintUsed}
+              lang={sessionInfo?.subject === 'Hindi' ? 'hi-IN' : 'en-IN'}
             />
 
             <div className="answer-section">
@@ -289,6 +290,7 @@ export default function TestPage() {
                 value={answer}
                 onChange={setAnswer}
                 disabled={submitting}
+                lang={sessionInfo?.subject === 'Hindi' ? 'hi-IN' : 'en-IN'}
               />
 
               {error && <div className="alert alert-error">{error}</div>}

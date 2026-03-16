@@ -25,7 +25,7 @@ export default function useSpeechRecognition() {
     }
   }, []);
 
-  const startListening = useCallback((existingText = '') => {
+  const startListening = useCallback((existingText = '', lang = 'en-IN') => {
     if (!isSupported) {
       setError('Speech recognition is not supported in this browser. Please use Google Chrome.');
       return;
@@ -44,7 +44,7 @@ export default function useSpeechRecognition() {
     finalTranscriptRef.current = existingText;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-IN';
+    recognition.lang = lang;
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;

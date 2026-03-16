@@ -52,6 +52,16 @@ def _get_client():
     return anthropic.Anthropic(api_key=api_key)
 
 
+def _subject_language(subject: str) -> str:
+    """Return the generation language for a given subject.
+
+    Hindi as a school subject requires questions, answers, hints, and
+    summaries to be written in Hindi (Devanagari script).  All other
+    subjects use English.
+    """
+    return 'Hindi' if subject and subject.strip().lower() == 'hindi' else 'English'
+
+
 # ─────────────────────────────────────────────────────────────
 # Question Generation
 # ─────────────────────────────────────────────────────────────
@@ -63,6 +73,7 @@ CONTEXT:
 - Grade: {grade}
 - Subject: {subject}
 - Chapter: {chapter_name}
+- Language: {language}
 
 CHAPTER CONTENT:
 {chapter_text}
@@ -96,7 +107,7 @@ SECTION C — 5 MARK QUESTIONS (5–10 questions):
 RULES:
 1. Question numbers are sequential starting from 1 — do NOT restart numbering per section.
 2. Order: all 1-mark questions first, then 3-mark, then 5-mark.
-3. Language must be simple and clear, appropriate for Grade {grade}.
+3. Write ALL question_text, key_points, and topic_tag values in {language}. Do not mix languages.
 4. Every significant concept or section of the chapter must appear in at least one question.
 5. Include a topic_tag for each question indicating the subtopic it covers.
 6. key_points count MUST exactly match the marks value (1 mark = 1 key point, 3 marks = 3 key points, 5 marks = 5 key points).
@@ -155,7 +166,8 @@ def generate_questions(chapter_text: str, chapter_name: str,
         grade=grade,
         subject=subject,
         chapter_name=chapter_name,
-        chapter_text=chapter_text[:15000]
+        chapter_text=chapter_text[:15000],
+        language=_subject_language(subject)
     )
 
     message = client.messages.create(
@@ -181,6 +193,7 @@ CONTEXT:
 - Grade: {grade}
 - Subject: {subject}
 - Chapter: {chapter_name}
+- Language: {language}
 
 CHAPTER CONTENT (excerpt for context):
 {chapter_text_excerpt}
@@ -208,6 +221,9 @@ Each question's topic_tag must accurately reflect the subtopic it tests. Flag an
 
 CRITERION 5 — AGE APPROPRIATENESS:
 Questions must use language appropriate for Grade {grade} students. Flag any question that is confusingly worded or uses vocabulary far above grade level.
+
+CRITERION 6 — LANGUAGE CONSISTENCY:
+All question_text, key_points, and topic_tag values must be written entirely in {language}. Flag any field that mixes languages or is written in the wrong language.
 
 EVALUATION RULES:
 - Be strict but fair. Only flag genuine problems, not stylistic preferences.
@@ -246,6 +262,7 @@ CONTEXT:
 - Grade: {grade}
 - Subject: {subject}
 - Chapter: {chapter_name}
+- Language: {language}
 
 FULL CHAPTER CONTENT:
 {chapter_text}
@@ -275,6 +292,7 @@ OUTPUT RULES:
 - Do not return questions that had no issues.
 - Each returned question must have all five fields: question_number, marks, question_text, key_points, topic_tag.
 - key_points count MUST exactly equal marks.
+- Write ALL question_text, key_points, and topic_tag values in {language}. Do not mix languages.
 
 IMPORTANT: Return ONLY a valid JSON array. No explanation, no markdown code fences. Just the raw JSON array.
 
@@ -311,7 +329,8 @@ def evaluate_questions(questions: list, chapter_text: str, chapter_name: str,
         subject=subject,
         chapter_name=chapter_name,
         chapter_text_excerpt=chapter_text[:3000],
-        questions_json=json.dumps(questions, indent=2)
+        questions_json=json.dumps(questions, indent=2),
+        language=_subject_language(subject)
     )
 
     message = client.messages.create(
@@ -353,7 +372,8 @@ def fix_questions(questions: list, issues: list, topics_missing: list,
         chapter_text=chapter_text[:15000],
         questions_json=json.dumps(questions, indent=2),
         issues_json=json.dumps(issues, indent=2),
-        topics_missing_json=json.dumps(topics_missing, indent=2)
+        topics_missing_json=json.dumps(topics_missing, indent=2),
+        language=_subject_language(subject)
     )
 
     message = client.messages.create(
@@ -507,11 +527,12 @@ CHAPTER_SUMMARY_PROMPT = """You are a helpful teacher summarizing a textbook cha
 
 Chapter: {chapter_name}
 Subject: {subject} | Board: {board} | Grade: {grade}
+Language: {language}
 
 Chapter Content:
 {chapter_text}
 
-Write a clear, concise summary of this chapter in 3–5 sentences. Cover the key topics and main concepts. Use simple language appropriate for Grade {grade} students. Return ONLY the summary text — no headings, no bullet points, no markdown."""
+Write a clear, concise summary of this chapter in 3–5 sentences. Cover the key topics and main concepts. Use simple language appropriate for Grade {grade} students. Write the summary entirely in {language}. Return ONLY the summary text — no headings, no bullet points, no markdown."""
 
 
 def generate_chapter_summary(chapter) -> str:
@@ -526,7 +547,8 @@ def generate_chapter_summary(chapter) -> str:
         subject=chapter.subject,
         board=chapter.board,
         grade=chapter.grade,
-        chapter_text=(chapter.pdf_content or '')[:5000]
+        chapter_text=(chapter.pdf_content or '')[:5000],
+        language=_subject_language(chapter.subject)
     )
     message = client.messages.create(
         model=_get_model(),
@@ -554,6 +576,8 @@ EXPECTED KEY POINTS (the student should ideally cover all of these):
 STUDENT'S ANSWER:
 "{student_answer}"
 
+LANGUAGE: {language}
+
 TASK:
 Evaluate the student's answer by checking which key points they adequately covered and which they missed.
 
@@ -565,6 +589,7 @@ RULES:
 5. If points are missing: gently mention what was missed and encourage them to remember for next time.
 6. Keep feedback to 2–3 sentences maximum. Use the student's name "{student_name}" if provided (otherwise say "You").
 7. Score = number of key points adequately covered out of total key points.
+8. Write the "feedback" field entirely in {language}.
 
 IMPORTANT: Return ONLY a valid JSON object. No explanation, no markdown code fences. Just the raw JSON object.
 
@@ -580,7 +605,7 @@ JSON FORMAT:
 
 def evaluate_answer(question_text: str, key_points: list,
                     student_answer: str, grade: int,
-                    student_name: str = '') -> dict:
+                    student_name: str = '', subject: str = '') -> dict:
     """
     Call Claude to evaluate a student's answer against key points.
     Returns evaluation dict.
@@ -596,7 +621,8 @@ def evaluate_answer(question_text: str, key_points: list,
         question_text=question_text,
         key_points_formatted=key_points_formatted,
         student_answer=student_answer[:2000],
-        student_name=name
+        student_name=name,
+        language=_subject_language(subject)
     )
 
     message = client.messages.create(
@@ -645,6 +671,8 @@ STUDENT'S CURRENT PARTIAL ANSWER:
 PREVIOUS ANSWERS BY THIS STUDENT ON THE SAME TOPIC:
 {previous_answers_text}
 
+LANGUAGE: {language}
+
 TASK:
 Write a short, gentle hint to nudge the student in the right direction.
 
@@ -652,14 +680,16 @@ RULES:
 1. NEVER reveal a key point word-for-word. Guide, don't give away.
 2. If the student has written something, acknowledge it and point toward what is still missing.
 3. If they have answered related questions on the same topic, connect to that knowledge.
-4. Use phrases like "Think about...", "Remember...", "Consider...", "What did we learn about..."
+4. Use phrases like "Think about...", "Remember...", "Consider...", "What did we learn about..." (in {language}).
 5. Keep it to 1–2 sentences only. Warm, simple language for a Grade {grade} student.
-6. Return ONLY the hint as plain text — no JSON, no bullet points, no markdown."""
+6. Write the hint entirely in {language}.
+7. Return ONLY the hint as plain text — no JSON, no bullet points, no markdown."""
 
 
 def generate_hint(question_text: str, key_points: list, marks: int,
                   topic_tag: str, partial_answer: str,
-                  related_previous_answers: list, grade: int) -> str:
+                  related_previous_answers: list, grade: int,
+                  subject: str = '') -> str:
     """
     Generate a gentle nudge hint for a student who is stuck.
     Returns hint as a plain string.
@@ -686,6 +716,7 @@ def generate_hint(question_text: str, key_points: list, marks: int,
         key_points_formatted=key_points_formatted,
         partial_answer=partial,
         previous_answers_text=prev_text,
+        language=_subject_language(subject)
     )
 
     message = client.messages.create(
