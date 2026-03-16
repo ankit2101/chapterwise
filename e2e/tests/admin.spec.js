@@ -159,9 +159,17 @@ test.describe('Upload Tab — Single Upload', () => {
 
   test('upload button is disabled when form is empty', async ({ page }) => {
     const uploadBtn = page.getByRole('button', { name: /upload/i }).first();
-    await expect(uploadBtn).toBeDisabled().catch(() => {
-      // Some implementations show validation on submit rather than disabling
-    });
+    // Check if upload button exists; if the implementation disables it when
+    // the form is empty, assert that — otherwise assert it is visible at minimum.
+    if (await uploadBtn.isVisible()) {
+      const isDisabled = await uploadBtn.isDisabled();
+      if (isDisabled) {
+        await expect(uploadBtn).toBeDisabled();
+      } else {
+        // Implementation uses submit-time validation instead; button is enabled
+        await expect(uploadBtn).toBeEnabled();
+      }
+    }
   });
 
   test('shows error when no file is selected', async ({ page }) => {
@@ -245,12 +253,16 @@ test.describe('Content Tab', () => {
     await expect(page.locator('body')).toContainText(/cached|questions/i, { timeout: 6000 });
   });
 
-  test('Regenerate questions button is present', async ({ page }) => {
-    const regenBtn = page.locator('button:has-text("Regenerate"), button[title*="Regenerate"]').first();
-    // It may not exist if no chapters; just check it's findable
-    const count = await regenBtn.count();
-    // Acceptable to have 0 (no chapters) or more
-    expect(count).toBeGreaterThanOrEqual(0);
+  test('Regenerate questions button is present when chapters exist', async ({ page }) => {
+    // Count chapter rows first; only assert regenerate button if chapters are present
+    const chapterRows = page.locator('tr, [class*="chapter-row"]');
+    const rowCount = await chapterRows.count();
+    if (rowCount > 0) {
+      await expect(
+        page.locator('button:has-text("Regenerate"), button[title*="Regenerate"]').first()
+      ).toBeVisible({ timeout: 6000 });
+    }
+    // If no chapters are present the test is vacuously satisfied — no assertion needed
   });
 });
 

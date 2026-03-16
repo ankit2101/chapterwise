@@ -404,7 +404,7 @@ class TestAdminSettingsFlow:
         model_cfg2 = admin_client.get('/api/admin/model-config').get_json()
         assert model_cfg2['current_model'] == 'claude-haiku-4-5-20251001'
 
-    def test_password_change_then_re-login(self, client):
+    def test_password_change_then_relogin(self, client):
         # Login as admin
         client.post('/api/admin/login', json={'username': 'admin', 'password': 'admin123'})
 
